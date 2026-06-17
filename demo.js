@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setMobileFrame(index) {
     const now = performance.now();
-    if (now - lastFrameUpdate < 16) return;
+    if (now - lastFrameUpdate < 95) return;
     lastFrameUpdate = now;
 
     const img = document.getElementById('anima-effect');
@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const center = (FRAME_COUNT - 1) / 2;
     const movement = currentIndex - center;
-    img.style.transform = `translateY(${movement * 8}px) scale(${1 + Math.abs(movement) * 0.014})`;
+    img.style.transform = `translateY(${movement * 5}px) scale(${1 + Math.abs(movement) * 0.008})`;
   }
 
   function frameFromValue(value, center, range) {
@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
       motionStatus.textContent = 'Motion enabled. Tilt up and down slowly.';
     }
 
-    const frame = frameFromValue(value, neutralValue, 14);
+    const frame = frameFromValue(value, neutralValue, 18);
     setMobileFrame(frame);
 
     if (sensorEvents % 8 === 0) {
