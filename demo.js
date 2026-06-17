@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const preview = document.getElementById('animated-preview');
   const resetBtn = document.getElementById('reset-btn');
   const motionBtn = document.getElementById('motion-permission-btn');
+  const changeModeBtn = document.getElementById('change-mode-btn');
   const deviceMode = document.getElementById('device-mode');
   const selectionLabel = document.getElementById('selection-label');
   const motionStatus = document.getElementById('motion-status');
@@ -17,17 +18,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const UPRIGHT_BETA = 80;
   const TARGET_TILT_BETA = 40;
   const DEAD_ZONE_BETA = 8;
-  const OPPOSITE_TILT_BETA = 120;
   const FRAME_THROTTLE_MS = 55;
-
   const MOBILE_QUERY = window.matchMedia('(max-width: 1180px), (pointer: coarse)');
 
   let selectedShape = null;
   let selectedColor = null;
   let mobileFrames = [];
+  let frameImageCache = [];
   let resolvedFrameCache = new Map();
   let currentIndex = Math.floor(FRAME_COUNT / 2);
-  let frameImageCache = [];
+  let mode = 'motion'; // 'motion' or 'gif'
   let motionEnabled = false;
   let lastFrameUpdate = 0;
   let sensorEvents = 0;
@@ -38,17 +38,30 @@ document.addEventListener('DOMContentLoaded', () => {
     return MOBILE_QUERY.matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
 
-  function maybeAutoOpenMotionPopup() {
-    if (!isMobileOrTablet()) return;
-    if (autoPromptShown || motionEnabled) return;
-    if (!selectedShape || !selectedColor) return;
-
-    autoPromptShown = true;
-    setTimeout(() => openMotionModal(), 450);
-  }
-
   function debug(message) {
     if (motionDebug) motionDebug.textContent = message || '';
+  }
+
+  function updateButtons() {
+    if (!isMobileOrTablet()) {
+      motionBtn.style.display = 'none';
+      changeModeBtn.style.display = 'none';
+      resetBtn.style.display = 'inline-flex';
+      return;
+    }
+
+    resetBtn.style.display = 'inline-flex';
+
+    if (mode === 'gif') {
+      motionBtn.style.display = 'inline-flex';
+      motionBtn.textContent = 'Enable motion effect';
+      changeModeBtn.style.display = 'none';
+    } else {
+      motionBtn.style.display = motionEnabled ? 'none' : 'inline-flex';
+      motionBtn.textContent = 'Enable motion';
+      changeModeBtn.style.display = 'inline-flex';
+      changeModeBtn.textContent = 'Use GIF mode';
+    }
   }
 
   function openMotionModal() {
@@ -71,10 +84,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function setDeviceMode() {
     const mobile = isMobileOrTablet();
     deviceMode.textContent = mobile ? 'Mobile / tablet mode' : 'Desktop mode';
-    motionBtn.style.display = mobile ? 'inline-flex' : 'none';
     motionStatus.textContent = mobile
-      ? 'Select a shape and colour, tap Enable motion, allow access, then tilt your phone up and down.'
+      ? 'Select a shape and colour. Choose motion effect or GIF mode.'
       : 'Desktop mode uses the animated GIF automatically.';
+    updateButtons();
   }
 
   function desktopGifPath(shape, color) {
@@ -82,61 +95,38 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function desktopGifCandidates(shape, color) {
-    const colorVariants = [color, color.toUpperCase(), color.toLowerCase()];
-    if (color === 'Amethyst') colorVariants.push('Amethys', 'AMETHYS', 'amethys');
+    const variants = [color, color.toUpperCase(), color.toLowerCase()];
+    if (color === 'Amethyst') variants.push('Amethys', 'AMETHYS', 'amethys');
 
     const paths = [];
-    colorVariants.forEach((name) => {
+    variants.forEach((name) => {
       paths.push(`${shape}/${name}_tr.gif`);
-      paths.push(`${shape}/${name}.gif`);
       paths.push(`${shape}/${name}_TR.gif`);
+      paths.push(`${shape}/${name}.gif`);
     });
-
     return [...new Set(paths)];
   }
 
   function setGifWithFallback(img, shape, color, onFail) {
     const candidates = desktopGifCandidates(shape, color);
-    let index = 0;
-
+    let i = 0;
     function tryNext() {
-      if (index >= candidates.length) {
+      if (i >= candidates.length) {
         if (typeof onFail === 'function') onFail();
         return;
       }
-      img.src = candidates[index];
-      index += 1;
+      img.src = candidates[i];
+      i += 1;
     }
-
     img.onerror = tryNext;
     tryNext();
   }
-  function showGifFallbackOnMobile(reason = 'Motion access was not enabled. Showing animated GIF instead.') {
-    if (!selectedShape || !selectedColor) return;
-
-    mobileFrames = [];
-    if (typeof frameImageCache !== 'undefined') frameImageCache = [];
-    motionEnabled = false;
-    preview.className = 'animated-preview has-render';
-    preview.innerHTML = `<img alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
-
-    const img = preview.querySelector('img');
-    setGifWithFallback(img, selectedShape, selectedColor, () => {
-      preview.innerHTML = missingDesktopMessage();
-    });
-
-    motionStatus.textContent = reason;
-    debug('GIF fallback mode on mobile.');
-  }
-
 
   function colorFolderCandidates(color) {
     const lower = color.toLowerCase();
     const upper = color.toUpperCase();
     const candidates = [color, upper, lower];
-
     if (color === 'Amethyst') candidates.push('Amethys', 'AMETHYS', 'amethys');
-
     return [...new Set(candidates)];
   }
 
@@ -155,9 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     folders.forEach((folder) => {
       numbers.forEach((num) => {
-        exts.forEach((ext) => {
-          paths.push(`${shape}_telephone/${folder}/${num}.${ext}`);
-        });
+        exts.forEach((ext) => paths.push(`${shape}_telephone/${folder}/${num}.${ext}`));
       });
     });
 
@@ -178,13 +166,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (resolvedFrameCache.has(cacheKey)) return resolvedFrameCache.get(cacheKey);
 
     const candidates = frameCandidatePaths(shape, color, frameNumber);
-
     for (const src of candidates) {
       try {
-        const validSrc = await loadImage(src);
-        resolvedFrameCache.set(cacheKey, validSrc);
-        return validSrc;
-      } catch (error) {}
+        const valid = await loadImage(src);
+        resolvedFrameCache.set(cacheKey, valid);
+        return valid;
+      } catch (e) {}
     }
 
     resolvedFrameCache.set(cacheKey, null);
@@ -209,26 +196,90 @@ document.addEventListener('DOMContentLoaded', () => {
     preview.className = 'animated-preview empty-state';
     preview.innerHTML = '<span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p>';
     mobileFrames = [];
+    frameImageCache = [];
     currentIndex = Math.floor(FRAME_COUNT / 2);
+    motionEnabled = false;
+    sensorEvents = 0;
     debug('');
+    motionStatus.textContent = isMobileOrTablet()
+      ? 'Select a shape and colour. Choose motion effect or GIF mode.'
+      : 'Desktop mode uses the animated GIF automatically.';
+    updateButtons();
   }
 
   function missingMobileMessage() {
-    return `
-      <div class="empty-state">
-        <span class="preview-kicker">Missing mobile frames</span>
-        <p>Add your 11 images here:<br><strong>${selectedShape}_telephone/${selectedColor}/1.png</strong> to <strong>11.png</strong></p>
-      </div>
-    `;
+    return `<div class="empty-state"><span class="preview-kicker">Missing mobile frames</span><p>Add your 11 images here:<br><strong>${selectedShape}_telephone/${selectedColor}/1.png</strong> to <strong>11.png</strong></p></div>`;
   }
 
   function missingDesktopMessage() {
-    return `
-      <div class="empty-state">
-        <span class="preview-kicker">Missing GIF</span>
-        <p>Add this file:<br><strong>${desktopGifPath(selectedShape, selectedColor)}</strong></p>
-      </div>
-    `;
+    return `<div class="empty-state"><span class="preview-kicker">Missing GIF</span><p>Add this file:<br><strong>${desktopGifPath(selectedShape, selectedColor)}</strong></p></div>`;
+  }
+
+  function showGifMode(reason = 'GIF mode is enabled.') {
+    if (!selectedShape || !selectedColor) return;
+
+    mode = 'gif';
+    motionEnabled = false;
+    mobileFrames = [];
+    frameImageCache = [];
+
+    preview.className = 'animated-preview has-render';
+    preview.innerHTML = `<img alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
+    const img = preview.querySelector('img');
+    setGifWithFallback(img, selectedShape, selectedColor, () => {
+      preview.innerHTML = missingDesktopMessage();
+    });
+
+    motionStatus.textContent = reason;
+    debug('GIF mode enabled.');
+    updateButtons();
+  }
+
+  async function showMotionPreview() {
+    if (!selectedShape || !selectedColor) {
+      showEmpty();
+      return;
+    }
+
+    mode = 'motion';
+    preview.className = 'animated-preview has-render';
+
+    if (!isMobileOrTablet()) {
+      showGifMode('Desktop mode uses the animated GIF automatically.');
+      return;
+    }
+
+    motionStatus.textContent = 'Loading mobile frames…';
+    preview.innerHTML = '<div class="empty-state"><span class="preview-kicker">Loading</span><p>Preparing the 11 tilt frames…</p></div>';
+
+    mobileFrames = await preloadMobileFrames(selectedShape, selectedColor);
+    const validFrames = mobileFrames.filter(Boolean);
+
+    if (!validFrames.length) {
+      showGifMode('Mobile frames were not found. Showing animated GIF instead.');
+      return;
+    }
+
+    for (let i = 0; i < mobileFrames.length; i += 1) {
+      if (!mobileFrames[i]) {
+        mobileFrames[i] = validFrames[Math.min(validFrames.length - 1, Math.floor(i * validFrames.length / FRAME_COUNT))];
+      }
+    }
+
+    frameImageCache = mobileFrames.map((src) => {
+      const image = new Image();
+      image.src = src;
+      return image;
+    });
+
+    currentIndex = 0;
+    preview.innerHTML = `<img id="anima-effect" src="${mobileFrames[currentIndex]}" alt="${selectedShape} ${selectedColor} tilt animation" class="preview-render phone-render" draggable="false" />`;
+
+    motionStatus.textContent = motionEnabled
+      ? 'Motion effect enabled. Hold your phone upright, then tilt gently.'
+      : 'Motion preview ready. Allow motion access to activate the effect.';
+    debug(`${validFrames.length}/${FRAME_COUNT} mobile frames loaded.`);
+    updateButtons();
   }
 
   async function showPreview() {
@@ -239,48 +290,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    preview.className = 'animated-preview has-render';
-
     if (isMobileOrTablet()) {
-      motionStatus.textContent = 'Loading mobile frames…';
-      preview.innerHTML = '<div class="empty-state"><span class="preview-kicker">Loading</span><p>Preparing the 11 tilt frames…</p></div>';
-
-      mobileFrames = await preloadMobileFrames(selectedShape, selectedColor);
-      const validFrames = mobileFrames.filter(Boolean);
-
-      if (!validFrames.length) {
-        mobileFrames = [];
-        preview.innerHTML = missingMobileMessage();
-        motionStatus.textContent = 'Mobile frames were not found. Check folder names and image names.';
-        debug('No mobile frame found.');
-        return;
-      }
-
-      for (let i = 0; i < mobileFrames.length; i += 1) {
-        if (!mobileFrames[i]) {
-          mobileFrames[i] = validFrames[Math.min(validFrames.length - 1, Math.floor(i * validFrames.length / FRAME_COUNT))];
-        }
-      }
-
-      currentIndex = Math.floor(FRAME_COUNT / 2);
-      frameImageCache = mobileFrames.map((src) => { const image = new Image(); image.src = src; return image; });
-      preview.innerHTML = `<img id="anima-effect" src="${mobileFrames[currentIndex]}" alt="${selectedShape} ${selectedColor} tilt animation" class="preview-render phone-render" draggable="false" />`;
-
-      motionBtn.disabled = false;
-      motionBtn.textContent = motionEnabled ? 'Recalibrate motion' : 'Enable motion';
-      motionStatus.textContent = motionEnabled
-        ? 'Motion is enabled. Keep the phone upright, then tilt around 18°.'
-        : 'Tap Enable motion, allow access, then keep phone upright and tilt around 18°.';
-      debug(`${validFrames.length}/${FRAME_COUNT} mobile frames loaded. Fixed beta mode: 80° → center, 40° → final.`);
-      return;
+      if (mode === 'gif') showGifMode('GIF mode is enabled.');
+      else await showMotionPreview();
+    } else {
+      showGifMode('Desktop mode uses the animated GIF automatically.');
     }
-
-    mobileFrames = [];
-    preview.innerHTML = `<img alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
-    const img = preview.querySelector('img');
-    setGifWithFallback(img, selectedShape, selectedColor, () => {
-      preview.innerHTML = missingDesktopMessage();
-    });
   }
 
   function setMobileFrame(index) {
@@ -295,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (safeIndex === currentIndex) return;
 
     currentIndex = safeIndex;
-    img.style.opacity = '0.88';
+    img.style.opacity = '0.9';
     img.src = frameImageCache[currentIndex]?.src || mobileFrames[currentIndex];
     requestAnimationFrame(() => {
       img.style.opacity = '1';
@@ -309,15 +324,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function frameFromBeta(beta) {
     if (typeof beta !== 'number') return currentIndex;
 
-    // Phone upright around 80°
-    // No animation between 80° and 72°
     if (beta >= (UPRIGHT_BETA - DEAD_ZONE_BETA)) {
       return 0;
     }
 
     const start = UPRIGHT_BETA - DEAD_ZONE_BETA; // 72°
     const end = TARGET_TILT_BETA; // 40°
-
     const clamped = Math.max(end, Math.min(start, beta));
     const normalized = (start - clamped) / (start - end);
 
@@ -325,20 +337,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleOrientation(event) {
-    if (!motionEnabled || !isMobileOrTablet() || !mobileFrames.length) return;
+    if (!motionEnabled || mode !== 'motion' || !isMobileOrTablet() || !mobileFrames.length) return;
 
     const beta = typeof event.beta === 'number' ? event.beta : null;
     const gamma = typeof event.gamma === 'number' ? event.gamma : null;
-
     if (beta === null) return;
 
     sensorEvents += 1;
-
-    const frame = frameFromBeta(beta);
-    setMobileFrame(frame);
+    setMobileFrame(frameFromBeta(beta));
 
     if (sensorEvents % 6 === 0) {
-      debug(`Sensor OK · beta: ${beta.toFixed(1)} · gamma: ${gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1} · target: 80°→center / 40°→final`);
+      debug(`Sensor OK · beta: ${beta.toFixed(1)} · gamma: ${gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1}`);
     }
   }
 
@@ -370,14 +379,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isMobileOrTablet()) return;
 
     if (!selectedShape || !selectedColor) {
-      motionBtn.textContent = 'Select shape + colour';
-      motionStatus.textContent = 'Select a shape and a colour first. The permission popup will appear automatically on mobile.';
-      setTimeout(() => {
-        motionBtn.textContent = motionEnabled ? 'Recalibrate motion' : 'Enable motion';
-      }, 1300);
+      motionStatus.textContent = 'Select a shape and a colour first.';
       return;
     }
 
+    mode = 'motion';
     motionBtn.disabled = true;
     motionBtn.textContent = 'Requesting access…';
     motionStatus.textContent = 'Accept the iPhone permission popup if it appears.';
@@ -387,36 +393,32 @@ document.addEventListener('DOMContentLoaded', () => {
       const granted = await requestSensorPermissionNow();
 
       if (!granted) {
-        motionEnabled = false;
         motionBtn.disabled = false;
-        motionBtn.textContent = 'Enable motion';
-        showGifFallbackOnMobile('Motion permission was denied. Showing animated GIF instead.');
-        debug('On iPhone: Settings > Safari > Motion & Orientation Access must be enabled.');
+        showGifMode('Motion permission was denied. GIF mode is enabled.');
         return;
       }
 
       motionEnabled = true;
       sensorEvents = 0;
       attachSensorHandlers();
-
-      if (!mobileFrames.length) {
-        await showPreview();
-      }
+      await showMotionPreview();
 
       motionBtn.disabled = false;
-      motionBtn.textContent = 'Recalibrate motion';
-      motionStatus.textContent = 'Motion enabled. Keep the phone upright, then tilt around 18°.';
-      debug('Motion enabled. Hold the phone upright, then tilt it gently for the effect.');
-
-      setMobileFrame(Math.floor(FRAME_COUNT / 2));
+      motionStatus.textContent = 'Motion effect enabled. Hold your phone upright, then tilt gently.';
+      debug('Motion effect enabled.');
+      updateButtons();
     } catch (error) {
-      motionEnabled = false;
       motionBtn.disabled = false;
-      motionBtn.textContent = 'Enable motion';
-      showGifFallbackOnMobile('Motion could not start. Showing animated GIF instead.');
-      motionStatus.textContent = 'Motion could not start. Showing animated GIF instead.';
-      debug('iPhone may block the sensor if permission is not triggered directly by the Allow button.');
+      showGifMode('Motion could not start. GIF mode is enabled.');
     }
+  }
+
+  function maybeAutoOpenMotionPopup() {
+    if (!isMobileOrTablet()) return;
+    if (autoPromptShown || mode === 'gif' || motionEnabled) return;
+    if (!selectedShape || !selectedColor) return;
+    autoPromptShown = true;
+    setTimeout(() => openMotionModal(), 450);
   }
 
   shapeButtons.forEach((button) => {
@@ -439,54 +441,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  resetBtn.addEventListener('click', async () => {
-    if (selectedShape && selectedColor) {
-      motionEnabled = false;
-      sensorEvents = 0;
-      await showPreview();
-      currentIndex = Math.floor(FRAME_COUNT / 2);
-
-      const img = document.getElementById('anima-effect');
-      if (img && mobileFrames.length) {
-        img.src = mobileFrames[currentIndex];
-        img.style.transform = 'translateY(0) scale(1)';
-        img.style.opacity = '1';
-      }
-
-      motionBtn.disabled = false;
-      motionBtn.textContent = 'Enable motion';
-      motionStatus.textContent = isMobileOrTablet()
-        ? 'Animation reset. The permission popup will appear again if needed.'
-        : 'Desktop mode uses the animated GIF automatically.';
-      debug('Animation reset to the center frame.');
-      return;
-    }
-
+  resetBtn.addEventListener('click', () => {
     selectedShape = null;
     selectedColor = null;
+    mode = 'motion';
     motionEnabled = false;
     sensorEvents = 0;
+    autoPromptShown = false;
+
     shapeButtons.forEach((btn) => btn.classList.remove('active'));
     colorOptions.forEach((color) => color.classList.remove('active'));
+
     updateSelectionLabel();
     showEmpty();
-    motionBtn.disabled = false;
-    motionBtn.textContent = 'Enable motion';
-    setDeviceMode();
   });
 
   motionBtn.addEventListener('click', () => {
     if (!isMobileOrTablet()) return;
 
     if (!selectedShape || !selectedColor) {
-      enableMotionFromUserGesture();
+      motionStatus.textContent = 'Select a shape and a colour first.';
       return;
     }
 
     openMotionModal();
   });
 
-  modalCancel?.addEventListener('click', () => { closeMotionModal(); showGifFallbackOnMobile('Motion access was cancelled. Showing animated GIF instead.'); }); showGifFallbackOnMobile('Motion access was cancelled. Showing animated GIF instead.'); });
+  changeModeBtn.addEventListener('click', () => {
+    if (!selectedShape || !selectedColor) {
+      motionStatus.textContent = 'Select a shape and a colour first.';
+      return;
+    }
+    showGifMode('GIF mode is enabled. You can still enable motion effect later.');
+  });
+
+  modalCancel?.addEventListener('click', () => {
+    closeMotionModal();
+    showGifMode('GIF mode is enabled. You can still enable motion effect later.');
+  });
 
   modalAccept?.addEventListener('click', () => {
     closeMotionModal();
@@ -494,7 +486,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   modal?.addEventListener('click', (event) => {
-    if (event.target === modal) closeMotionModal();
+    if (event.target === modal) {
+      closeMotionModal();
+      showGifMode('GIF mode is enabled. You can still enable motion effect later.');
+    }
   });
 
   if (typeof MOBILE_QUERY.addEventListener === 'function') {
@@ -506,4 +501,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setDeviceMode();
   updateSelectionLabel();
+  showEmpty();
 });

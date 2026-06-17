@@ -506,3 +506,35 @@
     display: inline-flex !important;
   }
 }
+
+
+/* === FINAL MODE + RESET BUTTONS === */
+.preview-actions {
+  display: flex !important;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#reset-btn,
+#change-mode-btn,
+#motion-permission-btn {
+  display: inline-flex !important;
+}
+
+@media (max-width: 760px) {
+  .preview-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    position: sticky;
+    bottom: 10px;
+    z-index: 40;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .btn {
+    min-height: 44px;
+    font-size: .82rem;
+  }
+}
