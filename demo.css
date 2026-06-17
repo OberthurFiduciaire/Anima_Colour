@@ -538,3 +538,36 @@
     font-size: .82rem;
   }
 }
+
+
+/* === FINAL SELECTION CLICK FIX === */
+@media (max-width: 760px) {
+  .demo-interface {
+    align-items: start;
+  }
+
+  .shapes-panel,
+  .colors-panel {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+  }
+
+  .preview-panel {
+    position: relative;
+    z-index: 1;
+  }
+
+  .shape-btn,
+  .color-option {
+    position: relative;
+    z-index: 3;
+    touch-action: manipulation;
+  }
+
+  .shape-btn.active,
+  .color-option.active {
+    border-color: rgba(125,196,245,.85);
+    background: rgba(125,196,245,.18);
+  }
+}

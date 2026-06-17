@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let mobileFrames = [];
   let frameImageCache = [];
   let resolvedFrameCache = new Map();
-  let currentIndex = Math.floor(FRAME_COUNT / 2);
-  let mode = 'motion'; // 'motion' or 'gif'
+  let currentIndex = 0;
+  let mode = 'motion';
   let motionEnabled = false;
   let lastFrameUpdate = 0;
   let sensorEvents = 0;
@@ -42,26 +42,62 @@ document.addEventListener('DOMContentLoaded', () => {
     if (motionDebug) motionDebug.textContent = message || '';
   }
 
-  function updateButtons() {
-    if (!isMobileOrTablet()) {
-      motionBtn.style.display = 'none';
-      changeModeBtn.style.display = 'none';
-      resetBtn.style.display = 'inline-flex';
-      return;
+  function updateSelectionLabel() {
+    if (selectedShape && selectedColor) {
+      selectionLabel.textContent = `${selectedShape} · ${selectedColor}`;
+    } else if (selectedShape) {
+      selectionLabel.textContent = `${selectedShape} · Choose a colour`;
+    } else if (selectedColor) {
+      selectionLabel.textContent = `Choose a shape · ${selectedColor}`;
+    } else {
+      selectionLabel.textContent = 'No selection';
     }
+  }
+
+  function updateActiveButtons() {
+    shapeButtons.forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.shape === selectedShape);
+    });
+
+    colorOptions.forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.color === selectedColor);
+    });
+  }
+
+  function updateButtons() {
+    const mobile = isMobileOrTablet();
 
     resetBtn.style.display = 'inline-flex';
+
+    if (!mobile) {
+      motionBtn.style.display = 'none';
+      if (changeModeBtn) changeModeBtn.style.display = 'none';
+      return;
+    }
 
     if (mode === 'gif') {
       motionBtn.style.display = 'inline-flex';
       motionBtn.textContent = 'Enable motion effect';
-      changeModeBtn.style.display = 'none';
+      if (changeModeBtn) changeModeBtn.style.display = 'none';
     } else {
       motionBtn.style.display = motionEnabled ? 'none' : 'inline-flex';
       motionBtn.textContent = 'Enable motion';
-      changeModeBtn.style.display = 'inline-flex';
-      changeModeBtn.textContent = 'Use GIF mode';
+      if (changeModeBtn) {
+        changeModeBtn.style.display = 'inline-flex';
+        changeModeBtn.textContent = 'Use GIF mode';
+      }
     }
+  }
+
+  function setDeviceMode() {
+    const mobile = isMobileOrTablet();
+    deviceMode.textContent = mobile ? 'Mobile / tablet mode' : 'Desktop mode';
+    if (!selectedShape || !selectedColor) {
+      motionStatus.textContent = mobile
+        ? 'Select one shape and one colour to start.'
+        : 'Desktop mode uses the animated GIF automatically.';
+    }
+    updateButtons();
   }
 
   function openMotionModal() {
@@ -79,15 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.classList.remove('is-open');
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
-  }
-
-  function setDeviceMode() {
-    const mobile = isMobileOrTablet();
-    deviceMode.textContent = mobile ? 'Mobile / tablet mode' : 'Desktop mode';
-    motionStatus.textContent = mobile
-      ? 'Select a shape and colour. Choose motion effect or GIF mode.'
-      : 'Desktop mode uses the animated GIF automatically.';
-    updateButtons();
   }
 
   function desktopGifPath(shape, color) {
@@ -109,15 +136,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setGifWithFallback(img, shape, color, onFail) {
     const candidates = desktopGifCandidates(shape, color);
-    let i = 0;
+    let index = 0;
+
     function tryNext() {
-      if (i >= candidates.length) {
+      if (index >= candidates.length) {
         if (typeof onFail === 'function') onFail();
         return;
       }
-      img.src = candidates[i];
-      i += 1;
+      img.src = candidates[index];
+      index += 1;
     }
+
     img.onerror = tryNext;
     tryNext();
   }
@@ -145,7 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     folders.forEach((folder) => {
       numbers.forEach((num) => {
-        exts.forEach((ext) => paths.push(`${shape}_telephone/${folder}/${num}.${ext}`));
+        exts.forEach((ext) => {
+          paths.push(`${shape}_telephone/${folder}/${num}.${ext}`);
+        });
       });
     });
 
@@ -171,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const valid = await loadImage(src);
         resolvedFrameCache.set(cacheKey, valid);
         return valid;
-      } catch (e) {}
+      } catch (error) {}
     }
 
     resolvedFrameCache.set(cacheKey, null);
@@ -186,29 +217,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return frames;
   }
 
-  function updateSelectionLabel() {
-    selectionLabel.textContent = selectedShape && selectedColor
-      ? `${selectedShape} · ${selectedColor}`
-      : 'No selection';
-  }
-
   function showEmpty() {
     preview.className = 'animated-preview empty-state';
     preview.innerHTML = '<span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p>';
     mobileFrames = [];
     frameImageCache = [];
-    currentIndex = Math.floor(FRAME_COUNT / 2);
+    currentIndex = 0;
     motionEnabled = false;
     sensorEvents = 0;
     debug('');
-    motionStatus.textContent = isMobileOrTablet()
-      ? 'Select a shape and colour. Choose motion effect or GIF mode.'
-      : 'Desktop mode uses the animated GIF automatically.';
+    updateSelectionLabel();
+    updateButtons();
+  }
+
+  function showWaitingForOtherChoice() {
+    preview.className = 'animated-preview empty-state';
+    const missing = selectedShape ? 'colour' : 'shape';
+    preview.innerHTML = `<span class="preview-kicker">Preview</span><p>Now select a ${missing} to start the demo.</p>`;
+    updateSelectionLabel();
     updateButtons();
   }
 
   function missingMobileMessage() {
-    return `<div class="empty-state"><span class="preview-kicker">Missing mobile frames</span><p>Add your 11 images here:<br><strong>${selectedShape}_telephone/${selectedColor}/1.png</strong> to <strong>11.png</strong></p></div>`;
+    return `<div class="empty-state"><span class="preview-kicker">Missing mobile frames</span><p>Add the 11 images here:<br><strong>${selectedShape}_telephone/${selectedColor}/1.png</strong> to <strong>11.png</strong></p></div>`;
   }
 
   function missingDesktopMessage() {
@@ -216,7 +247,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showGifMode(reason = 'GIF mode is enabled.') {
-    if (!selectedShape || !selectedColor) return;
+    if (!selectedShape || !selectedColor) {
+      showWaitingForOtherChoice();
+      return;
+    }
 
     mode = 'gif';
     motionEnabled = false;
@@ -237,18 +271,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function showMotionPreview() {
     if (!selectedShape || !selectedColor) {
-      showEmpty();
+      showWaitingForOtherChoice();
       return;
     }
 
     mode = 'motion';
-    preview.className = 'animated-preview has-render';
 
     if (!isMobileOrTablet()) {
       showGifMode('Desktop mode uses the animated GIF automatically.');
       return;
     }
 
+    preview.className = 'animated-preview has-render';
     motionStatus.textContent = 'Loading mobile frames…';
     preview.innerHTML = '<div class="empty-state"><span class="preview-kicker">Loading</span><p>Preparing the 11 tilt frames…</p></div>';
 
@@ -282,17 +316,22 @@ document.addEventListener('DOMContentLoaded', () => {
     updateButtons();
   }
 
-  async function showPreview() {
+  async function refreshPreviewAfterSelection() {
+    updateActiveButtons();
     updateSelectionLabel();
 
     if (!selectedShape || !selectedColor) {
-      showEmpty();
+      showWaitingForOtherChoice();
       return;
     }
 
     if (isMobileOrTablet()) {
-      if (mode === 'gif') showGifMode('GIF mode is enabled.');
-      else await showMotionPreview();
+      if (mode === 'gif') {
+        showGifMode('GIF mode is enabled. You can still enable motion effect later.');
+      } else {
+        await showMotionPreview();
+        maybeAutoOpenMotionPopup();
+      }
     } else {
       showGifMode('Desktop mode uses the animated GIF automatically.');
     }
@@ -328,8 +367,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return 0;
     }
 
-    const start = UPRIGHT_BETA - DEAD_ZONE_BETA; // 72°
-    const end = TARGET_TILT_BETA; // 40°
+    const start = UPRIGHT_BETA - DEAD_ZONE_BETA;
+    const end = TARGET_TILT_BETA;
     const clamped = Math.max(end, Math.min(start, beta));
     const normalized = (start - clamped) / (start - end);
 
@@ -379,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isMobileOrTablet()) return;
 
     if (!selectedShape || !selectedColor) {
-      motionStatus.textContent = 'Select a shape and a colour first.';
+      motionStatus.textContent = 'Select one shape and one colour first.';
       return;
     }
 
@@ -417,27 +456,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isMobileOrTablet()) return;
     if (autoPromptShown || mode === 'gif' || motionEnabled) return;
     if (!selectedShape || !selectedColor) return;
+
     autoPromptShown = true;
     setTimeout(() => openMotionModal(), 450);
   }
 
   shapeButtons.forEach((button) => {
     button.addEventListener('click', async () => {
-      shapeButtons.forEach((btn) => btn.classList.remove('active'));
-      button.classList.add('active');
       selectedShape = button.dataset.shape;
-      await showPreview();
-      maybeAutoOpenMotionPopup();
+      await refreshPreviewAfterSelection();
     });
   });
 
   colorOptions.forEach((option) => {
     option.addEventListener('click', async () => {
-      colorOptions.forEach((color) => color.classList.remove('active'));
-      option.classList.add('active');
       selectedColor = option.dataset.color;
-      await showPreview();
-      maybeAutoOpenMotionPopup();
+      await refreshPreviewAfterSelection();
     });
   });
 
@@ -452,7 +486,6 @@ document.addEventListener('DOMContentLoaded', () => {
     shapeButtons.forEach((btn) => btn.classList.remove('active'));
     colorOptions.forEach((color) => color.classList.remove('active'));
 
-    updateSelectionLabel();
     showEmpty();
   });
 
@@ -460,20 +493,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isMobileOrTablet()) return;
 
     if (!selectedShape || !selectedColor) {
-      motionStatus.textContent = 'Select a shape and a colour first.';
+      motionStatus.textContent = 'Select one shape and one colour first.';
       return;
     }
 
     openMotionModal();
   });
 
-  changeModeBtn.addEventListener('click', () => {
-    if (!selectedShape || !selectedColor) {
-      motionStatus.textContent = 'Select a shape and a colour first.';
-      return;
-    }
-    showGifMode('GIF mode is enabled. You can still enable motion effect later.');
-  });
+  if (changeModeBtn) {
+    changeModeBtn.addEventListener('click', () => {
+      if (!selectedShape || !selectedColor) {
+        motionStatus.textContent = 'Select one shape and one colour first.';
+        return;
+      }
+      showGifMode('GIF mode is enabled. You can still enable motion effect later.');
+    });
+  }
 
   modalCancel?.addEventListener('click', () => {
     closeMotionModal();
@@ -495,11 +530,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof MOBILE_QUERY.addEventListener === 'function') {
     MOBILE_QUERY.addEventListener('change', () => {
       setDeviceMode();
-      showPreview();
+      refreshPreviewAfterSelection();
     });
   }
 
   setDeviceMode();
   updateSelectionLabel();
+  updateActiveButtons();
   showEmpty();
 });
