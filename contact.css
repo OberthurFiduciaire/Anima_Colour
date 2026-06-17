@@ -1,0 +1,108 @@
+:root {
+  --font-display:'Cormorant Garamond',serif;
+  --font-body:'DM Sans',sans-serif;
+  --oberthur-blue:#0060A9;
+  --glacier-blue:#4A90A4;
+  --midnight-navy:#04142b;
+  --deep-navy:#020d1d;
+}
+
+.contact-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  padding: 150px 0 80px;
+  background: var(--midnight-navy);
+  color: #fff;
+  text-align: center;
+}
+
+.contact-inner {
+  position: relative;
+  z-index: 2;
+}
+
+.contact-page h1 {
+  margin: 0 0 22px;
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 8vw, 7rem);
+  font-weight: 300;
+  line-height: .95;
+}
+
+.contact-page h1 em {
+  font-style: italic;
+  background: linear-gradient(135deg,#7dc4f5,var(--glacier-blue),#00B894);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.contact-lead {
+  max-width: 620px;
+  margin: 0 auto 42px;
+  color: rgba(255,255,255,.68);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.contact-cards {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.contact-card {
+  display: grid;
+  gap: 8px;
+  padding: 30px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 26px;
+  background: linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.06));
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 28px 80px rgba(0,0,0,.28);
+  transition: transform .25s, border-color .25s, background .25s;
+}
+
+.contact-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(125,196,245,.55);
+  background: rgba(125,196,245,.12);
+}
+
+.contact-label {
+  color: #7dc4f5;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: .76rem;
+  font-weight: 900;
+}
+
+.contact-card strong {
+  font-size: 1.06rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .contact-page {
+    padding: 34px 0 50px;
+  }
+
+  .contact-page h1 {
+    font-size: clamp(3rem, 14vw, 4.6rem);
+  }
+
+  .contact-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-card {
+    padding: 24px 18px;
+    border-radius: 22px;
+  }
+}

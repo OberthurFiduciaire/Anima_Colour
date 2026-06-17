@@ -14,7 +14,7 @@
     <div class="container header-inner">
       <a href="index.html" class="brand brand-logo" aria-label="Oberthur Fiduciaire home"><img src="Logo_oberthur.png" alt="Oberthur Fiduciaire" class="brand-logo-img" /></a>
       <nav class="main-nav" aria-label="Main navigation">
-        <ul><li><a href="index.html">Home</a></li><li><a href="demo.html" class="active">Demo</a></li><li><a href="index.html#contact">Contact</a></li></ul>
+        <ul><li><a href="index.html">Home</a></li><li><a href="demo.html" class="active">Demo</a></li><li><a href="contact.html">Contact</a></li></ul>
       </nav>
     </div>
   </header>
@@ -36,6 +36,10 @@
               <div id="animated-preview" class="animated-preview empty-state"><span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p></div>
             </div>
             <div class="motion-help"><span class="motion-dot"></span><p id="motion-status">Mobile/tablet: select a shape and colour, then enable motion. Desktop: automatic GIF.</p></div><p id="motion-debug" class="motion-debug" aria-live="polite"></p>
+            <div class="motion-info-card">
+              <span class="motion-info-icon">i</span>
+              <p>On mobile, allow motion access, hold your phone upright, then tilt it gently to reveal the effect. If motion is refused, the animated GIF will be shown instead.</p>
+            </div>
             <div class="preview-actions"><button id="motion-permission-btn" class="btn btn-primary" type="button">Enable motion</button><button id="reset-btn" class="btn btn-secondary" type="button">Reset</button></div>
           </section>
 
@@ -69,13 +73,13 @@
   <div id="motion-modal" class="motion-modal" aria-hidden="true">
     <div class="motion-modal-card" role="dialog" aria-modal="true" aria-labelledby="motion-modal-title">
       <div class="motion-modal-icon">↕</div>
-      <h2 id="motion-modal-title">Enable phone motion</h2>
-      <p>To make the animation react to your phone, allow motion access on your iPhone, then tilt the device up and down slowly.</p>
+      <h2 id="motion-modal-title">Enable motion demo</h2>
+      <p>Allow motion access, hold your phone upright, then move it gently to see the security effect react in real time.</p>
       <div class="motion-modal-actions">
         <button id="motion-modal-cancel" class="btn btn-secondary" type="button">Cancel</button>
         <button id="motion-modal-accept" class="btn btn-primary" type="button">Allow motion</button>
       </div>
-      <small>On iPhone, Safari may display a second system permission popup. This works only online with HTTPS, not from a local file.</small>
+      <small>If you refuse access, the mobile version will automatically display the animated GIF instead.</small>
     </div>
   </div>
 

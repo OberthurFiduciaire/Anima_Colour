@@ -160,7 +160,211 @@
   }
 }
 
-/* === FINAL RESPONSIVE LOGO FIX V2 === */
+/* === MOBILE DEMO UX UPGRADE === */
+.motion-info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 620px;
+  margin: 0 auto 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(125,196,245,.22);
+  border-radius: 16px;
+  background: rgba(125,196,245,.08);
+  color: rgba(255,255,255,.68);
+  font-size: .8rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.motion-info-card p {
+  margin: 0;
+}
+
+.motion-info-icon {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(125,196,245,.18);
+  color: #7dc4f5;
+  font-weight: 900;
+  font-size: .78rem;
+}
+
+@media (max-width: 760px) {
+  .demo-section {
+    padding: 14px 0 28px;
+  }
+
+  .demo-intro {
+    margin-bottom: 12px;
+  }
+
+  .demo-intro h1 {
+    font-size: clamp(2.2rem, 10vw, 3rem);
+    margin-bottom: 8px;
+  }
+
+  .demo-intro p {
+    font-size: .8rem;
+    line-height: 1.35;
+    max-width: 94%;
+  }
+
+  .demo-interface {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "preview preview"
+      "shapes colors";
+    gap: 10px;
+  }
+
+  .preview-panel {
+    grid-area: preview;
+    padding: 12px;
+  }
+
+  .shapes-panel {
+    grid-area: shapes;
+  }
+
+  .colors-panel {
+    grid-area: colors;
+  }
+
+  .choice-panel {
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .panel-heading {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .panel-heading span {
+    font-size: .58rem;
+  }
+
+  .panel-heading h2 {
+    font-size: .62rem;
+    letter-spacing: 1.1px;
+  }
+
+  .shapes-grid,
+  .colors-list {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .shape-btn {
+    border-radius: 14px;
+  }
+
+  .shape-preview {
+    height: 78px;
+    padding: 8px;
+  }
+
+  .shape-gif {
+    max-height: 68px;
+  }
+
+  .shape-info {
+    padding: 8px;
+  }
+
+  .shape-info strong {
+    font-size: .75rem;
+  }
+
+  .shape-info span {
+    display: none;
+  }
+
+  .color-option {
+    grid-template-columns: 30px 1fr;
+    padding: 7px;
+    border-radius: 13px;
+  }
+
+  .color-img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .color-option span {
+    font-size: .68rem;
+  }
+
+  .preview-topline {
+    font-size: .58rem;
+    letter-spacing: 1.1px;
+    margin-bottom: 8px;
+  }
+
+  .preview-container {
+    min-height: 44vh;
+  }
+
+  .animated-preview {
+    min-height: 41vh;
+  }
+
+  .preview-render,
+  .phone-render {
+    width: min(89%, 300px);
+    max-height: 42vh;
+  }
+
+  .motion-help {
+    margin: 10px 0 8px;
+    font-size: .68rem;
+  }
+
+  .motion-debug {
+    display: none;
+  }
+
+  .motion-info-card {
+    padding: 10px 11px;
+    margin-bottom: 10px;
+    font-size: .68rem;
+  }
+
+  .motion-info-icon {
+    flex-basis: 19px;
+    width: 19px;
+    height: 19px;
+    font-size: .68rem;
+  }
+
+  .preview-actions {
+    display: none;
+  }
+}
+
+@media (max-width: 390px) {
+  .preview-container {
+    min-height: 42vh;
+  }
+
+  .animated-preview {
+    min-height: 39vh;
+  }
+
+  .preview-render,
+  .phone-render {
+    width: min(91%, 285px);
+    max-height: 40vh;
+  }
+}
+
+/* === FINAL RESPONSIVE LOGO FIX V3 === */
 .brand-logo {
   gap: 0 !important;
   flex: 0 1 auto;
@@ -189,14 +393,14 @@
   }
 
   .brand-logo-img {
-    height: 26px;
-    max-width: 128px;
+    height: 25px;
+    max-width: 122px;
   }
 }
 
 @media (max-width: 390px) {
   .brand-logo-img {
     height: 22px;
-    max-width: 110px;
+    max-width: 108px;
   }
 }

@@ -30,9 +30,19 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastFrameUpdate = 0;
   let sensorEvents = 0;
   let orientationHandlerAttached = false;
+  let autoPromptShown = false;
 
   function isMobileOrTablet() {
     return MOBILE_QUERY.matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+
+  function maybeAutoOpenMotionPopup() {
+    if (!isMobileOrTablet()) return;
+    if (autoPromptShown || motionEnabled) return;
+    if (!selectedShape || !selectedColor) return;
+
+    autoPromptShown = true;
+    setTimeout(() => openMotionModal(), 450);
   }
 
   function debug(message) {
@@ -68,6 +78,23 @@ document.addEventListener('DOMContentLoaded', () => {
   function desktopGifPath(shape, color) {
     return `${shape}/${color}_tr.gif`;
   }
+  function showGifFallbackOnMobile(reason = 'Motion access was not enabled. Showing animated GIF instead.') {
+    if (!selectedShape || !selectedColor) return;
+
+    mobileFrames = [];
+    motionEnabled = false;
+    preview.className = 'animated-preview has-render';
+    preview.innerHTML = `<img src="${desktopGifPath(selectedShape, selectedColor)}" alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
+
+    const img = preview.querySelector('img');
+    img.onerror = () => {
+      preview.innerHTML = missingDesktopMessage();
+    };
+
+    motionStatus.textContent = reason;
+    debug('GIF fallback mode on mobile.');
+  }
+
 
   function colorFolderCandidates(color) {
     const lower = color.toLowerCase();
@@ -305,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!selectedShape || !selectedColor) {
       motionBtn.textContent = 'Select shape + colour';
-      motionStatus.textContent = 'Select a shape and a colour before enabling motion.';
+      motionStatus.textContent = 'Select a shape and a colour first. The permission popup will appear automatically on mobile.';
       setTimeout(() => {
         motionBtn.textContent = motionEnabled ? 'Recalibrate motion' : 'Enable motion';
       }, 1300);
@@ -324,7 +351,8 @@ document.addEventListener('DOMContentLoaded', () => {
         motionEnabled = false;
         motionBtn.disabled = false;
         motionBtn.textContent = 'Enable motion';
-        motionStatus.textContent = 'Motion permission was denied or blocked.';
+        showGifFallbackOnMobile('Motion permission was denied. Showing animated GIF instead.');
+        motionStatus.textContent = 'Motion permission was denied. Showing animated GIF instead.';
         debug('On iPhone: Settings > Safari > Motion & Orientation Access must be enabled.');
         return;
       }
@@ -340,14 +368,15 @@ document.addEventListener('DOMContentLoaded', () => {
       motionBtn.disabled = false;
       motionBtn.textContent = 'Recalibrate motion';
       motionStatus.textContent = 'Motion enabled. Keep the phone upright, then tilt around 18°.';
-      debug('Fixed beta mode enabled: 80° center, 50° final. It will not calibrate around -33°/5°.');
+      debug('Motion enabled. Hold the phone upright, then tilt it gently for the effect.');
 
       setMobileFrame(Math.floor(FRAME_COUNT / 2));
     } catch (error) {
       motionEnabled = false;
       motionBtn.disabled = false;
       motionBtn.textContent = 'Enable motion';
-      motionStatus.textContent = 'Motion could not start.';
+      showGifFallbackOnMobile('Motion could not start. Showing animated GIF instead.');
+      motionStatus.textContent = 'Motion could not start. Showing animated GIF instead.';
       debug('iPhone may block the sensor if permission is not triggered directly by the Allow button.');
     }
   }
@@ -358,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
       button.classList.add('active');
       selectedShape = button.dataset.shape;
       await showPreview();
+      maybeAutoOpenMotionPopup();
     });
   });
 
@@ -367,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
       option.classList.add('active');
       selectedColor = option.dataset.color;
       await showPreview();
+      maybeAutoOpenMotionPopup();
     });
   });
 
