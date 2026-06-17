@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalCancel = document.getElementById('motion-modal-cancel');
 
   const FRAME_COUNT = 11;
+  const NEUTRAL_BETA = 80;
+  const TILT_RANGE = 30;
   const MOBILE_QUERY = window.matchMedia('(max-width: 1180px), (pointer: coarse)');
 
   let selectedShape = null;
@@ -223,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setMobileFrame(index) {
     const now = performance.now();
-    if (now - lastFrameUpdate < 95) return;
+    if (now - lastFrameUpdate < 110) return;
     lastFrameUpdate = now;
 
     const img = document.getElementById('anima-effect');
@@ -240,10 +242,16 @@ document.addEventListener('DOMContentLoaded', () => {
     img.style.transform = `translateY(${movement * 5}px) scale(${1 + Math.abs(movement) * 0.008})`;
   }
 
-  function frameFromValue(value, center, range) {
-    const delta = value - center;
-    const clamped = Math.max(-range, Math.min(range, delta));
-    const normalized = (clamped + range) / (range * 2);
+  function frameFromValue(value) {
+    const min = NEUTRAL_BETA - TILT_RANGE; // 50°
+    const max = NEUTRAL_BETA + TILT_RANGE; // 110°
+    const clamped = Math.max(min, Math.min(max, value));
+
+    // New calibration:
+    // beta 80° = phone straight / neutral / middle image
+    // beta 50° = phone tilted about 18° / end image
+    // beta 110° = opposite tilt / first image
+    const normalized = (max - clamped) / (max - min);
     return Math.round(normalized * (FRAME_COUNT - 1));
   }
 
@@ -277,11 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
       motionStatus.textContent = 'Motion enabled. Tilt up and down slowly.';
     }
 
-    const frame = frameFromValue(value, neutralValue, 18);
+    const frame = frameFromValue(value);
     setMobileFrame(frame);
 
     if (sensorEvents % 8 === 0) {
-      debug(`Sensor OK · beta: ${event.beta?.toFixed?.(1) ?? '-'} · gamma: ${event.gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1}`);
+      debug(`Sensor OK · beta: ${event.beta?.toFixed?.(1) ?? '-'} · gamma: ${event.gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1} · neutral: 80° / tilt: 50°`);
     }
   }
 
@@ -304,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
       motionStatus.textContent = 'Motion enabled. Tilt up and down slowly.';
     }
 
-    const frame = frameFromValue(value, neutralValue, 3);
+    const frame = frameFromValue(value);
     setMobileFrame(frame);
 
     if (sensorEvents % 8 === 0) {

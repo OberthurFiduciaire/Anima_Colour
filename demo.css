@@ -159,3 +159,44 @@
     width: 138px;
   }
 }
+
+/* === FINAL RESPONSIVE LOGO FIX V2 === */
+.brand-logo {
+  gap: 0 !important;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.brand-logo-img {
+  display: block;
+  width: auto;
+  height: 42px;
+  max-width: 210px;
+  object-fit: contain;
+  filter: brightness(1.08);
+}
+
+@media (max-width: 900px) {
+  .brand-logo-img {
+    height: 34px;
+    max-width: 170px;
+  }
+}
+
+@media (max-width: 760px) {
+  .header-inner {
+    overflow: hidden;
+  }
+
+  .brand-logo-img {
+    height: 26px;
+    max-width: 128px;
+  }
+}
+
+@media (max-width: 390px) {
+  .brand-logo-img {
+    height: 22px;
+    max-width: 110px;
+  }
+}
