@@ -26,7 +26,7 @@
         <div class="demo-intro">
           <span class="hero-eyebrow">Interactive demo</span>
           <h1>Security <em>demo</em></h1>
-          <p>Select a shape and a colour. On mobile and tablet, enable motion and tilt your device up and down. On desktop, the matching GIF plays automatically.</p>
+          <p>Select a shape and a colour. On mobile and tablet, tap Enable motion, allow access, then tilt your device up and down. On desktop, the matching GIF plays automatically.</p>
         </div>
 
         <section class="demo-interface" aria-label="Interactive demonstration interface">
@@ -64,6 +64,20 @@
       </div>
     </section>
   </main>
+
+
+  <div id="motion-modal" class="motion-modal" aria-hidden="true">
+    <div class="motion-modal-card" role="dialog" aria-modal="true" aria-labelledby="motion-modal-title">
+      <div class="motion-modal-icon">↕</div>
+      <h2 id="motion-modal-title">Enable phone motion</h2>
+      <p>To make the animation react to your phone, allow motion access on your iPhone, then tilt the device up and down slowly.</p>
+      <div class="motion-modal-actions">
+        <button id="motion-modal-cancel" class="btn btn-secondary" type="button">Cancel</button>
+        <button id="motion-modal-accept" class="btn btn-primary" type="button">Allow motion</button>
+      </div>
+      <small>On iPhone, Safari may display a second system permission popup.</small>
+    </div>
+  </div>
 
   <script src="demo.js"></script>
 </body>

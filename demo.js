@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectionLabel = document.getElementById('selection-label');
   const motionStatus = document.getElementById('motion-status');
 
+  const modal = document.getElementById('motion-modal');
+  const modalAccept = document.getElementById('motion-modal-accept');
+  const modalCancel = document.getElementById('motion-modal-cancel');
+
   const FRAME_COUNT = 11;
   const MOBILE_QUERY = window.matchMedia('(max-width: 1180px), (pointer: coarse)');
 
@@ -22,10 +26,26 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastSensorEventAt = 0;
   let orientationHandlerAttached = false;
   let motionHandlerAttached = false;
-  let touchStartY = null;
 
   function isMobileOrTablet() {
     return MOBILE_QUERY.matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+
+  function openMotionModal() {
+    if (!modal) {
+      startMotionPermissionFlow();
+      return;
+    }
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMotionModal() {
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
   }
 
   function setDeviceMode() {
@@ -33,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deviceMode.textContent = mobile ? 'Mobile / tablet mode' : 'Desktop mode';
     motionBtn.style.display = mobile ? 'inline-flex' : 'none';
     motionStatus.textContent = mobile
-      ? 'Select a shape and colour, tap Enable motion, then tilt your phone up and down.'
+      ? 'Select a shape and colour, tap Enable motion, allow access, then tilt your phone up and down.'
       : 'Desktop mode uses the animated GIF automatically.';
   }
 
@@ -46,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const upper = color.toUpperCase();
     const candidates = [color, upper, lower];
 
-    // Keeps compatibility with the existing typo in some folders.
+    // Compatibility with a possible existing typo.
     if (color === 'Amethyst') candidates.push('Amethys', 'AMETHYS', 'amethys');
 
     return [...new Set(candidates)];
@@ -90,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resolvedFrameCache.set(cacheKey, validSrc);
         return validSrc;
       } catch (error) {
-        // Continue with the next possible path.
+        // Try next possible filename.
       }
     }
 
@@ -178,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
       motionBtn.textContent = motionEnabled ? 'Recalibrate motion' : 'Enable motion';
       motionStatus.textContent = motionEnabled
         ? 'Motion is enabled. Tilt the phone up and down. Tap the button again to recalibrate.'
-        : 'Tap Enable motion, accept the permission, then tilt the phone up and down.';
+        : 'Tap Enable motion, allow access, then tilt the phone up and down.';
       return;
     }
 
@@ -208,8 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const center = (FRAME_COUNT - 1) / 2;
     const movement = currentIndex - center;
 
-    // Bigger movement so the effect is actually visible on a phone screen.
-    img.style.transform = `translateY(${movement * 6}px) scale(${1 + Math.abs(movement) * 0.01})`;
+    img.style.transform = `translateY(${movement * 7}px) scale(${1 + Math.abs(movement) * 0.012})`;
   }
 
   function getOrientationTilt(event) {
@@ -243,15 +262,14 @@ document.addEventListener('DOMContentLoaded', () => {
       motionStatus.textContent = 'Motion enabled. Tilt up and down slowly.';
     }
 
-    // Smaller range than before = image changes more easily.
     const delta = tilt - neutralTilt;
-    setMobileFrame(frameFromDelta(delta, 18));
+    setMobileFrame(frameFromDelta(delta, 16));
   }
 
   function handleMotion(event) {
     if (!motionEnabled || !isMobileOrTablet() || !mobileFrames.length) return;
 
-    // Orientation is cleaner; motion is fallback only.
+    // Orientation is cleaner; motion is fallback only when orientation events do not arrive.
     if (Date.now() - lastSensorEventAt < 250) return;
 
     const gravity = event.accelerationIncludingGravity;
@@ -268,23 +286,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const delta = value - neutralTilt;
-    setMobileFrame(frameFromDelta(delta, 3.2));
+    setMobileFrame(frameFromDelta(delta, 3));
   }
 
   async function requestSensorPermission() {
-    // iOS Safari requires this request to be launched directly from the button click.
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       const permission = await DeviceOrientationEvent.requestPermission();
       if (permission !== 'granted') return false;
     }
 
-    // Some iOS versions also expose DeviceMotion permission.
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
       try {
         const permission = await DeviceMotionEvent.requestPermission();
         if (permission !== 'granted') return false;
       } catch (error) {
-        // Orientation permission is enough for this demo.
+        // Orientation permission is enough for the demo.
       }
     }
 
@@ -303,29 +319,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function enableMotion() {
+  async function startMotionPermissionFlow() {
     if (!isMobileOrTablet()) return;
 
     if (!selectedShape || !selectedColor) {
       motionBtn.textContent = 'Select shape + colour';
+      motionStatus.textContent = 'Select a shape and a colour before enabling motion.';
       setTimeout(() => {
         motionBtn.textContent = motionEnabled ? 'Recalibrate motion' : 'Enable motion';
       }, 1300);
       return;
     }
 
-    // Permission first, while the click is still considered a user action by iPhone Safari.
+    if (!mobileFrames.length) {
+      await showPreview();
+    }
+
     motionBtn.disabled = true;
     motionBtn.textContent = 'Requesting access…';
-    motionStatus.textContent = 'Accept the motion permission if Safari asks.';
+    motionStatus.textContent = 'Accept the iPhone permission popup if it appears.';
 
     try {
       const granted = await requestSensorPermission();
 
       if (!granted) {
+        motionEnabled = false;
         motionBtn.disabled = false;
         motionBtn.textContent = 'Enable motion';
-        motionStatus.textContent = 'Motion permission was denied. Tap Enable motion and allow access.';
+        motionStatus.textContent = 'Motion permission was denied. Tap Enable motion again and choose Allow.';
         return;
       }
 
@@ -334,17 +355,13 @@ document.addEventListener('DOMContentLoaded', () => {
       lastSensorEventAt = 0;
       attachSensorHandlers();
 
-      if (!mobileFrames.length) {
-        await showPreview();
-      }
-
       motionBtn.disabled = false;
       motionBtn.textContent = 'Recalibrate motion';
       motionStatus.textContent = 'Motion enabled. Hold the phone normally, then tilt up and down slowly.';
 
       setTimeout(() => {
         if (motionEnabled && lastSensorEventAt === 0) {
-          motionStatus.textContent = 'No sensor detected yet. On iPhone: Settings > Safari > Motion & Orientation Access must be enabled.';
+          motionStatus.textContent = 'No movement detected yet. On iPhone: Settings > Safari > Motion & Orientation Access must be enabled.';
         }
       }, 2500);
     } catch (error) {
@@ -359,23 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isMobileOrTablet()) return;
     document.querySelector('.preview-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-
-  // Touch fallback: if the iPhone blocks the gyroscope, swiping the image still changes frames.
-  preview.addEventListener('touchstart', (event) => {
-    if (!isMobileOrTablet() || !mobileFrames.length) return;
-    touchStartY = event.touches[0].clientY;
-  }, { passive: true });
-
-  preview.addEventListener('touchmove', (event) => {
-    if (!isMobileOrTablet() || !mobileFrames.length || touchStartY === null) return;
-    const currentY = event.touches[0].clientY;
-    const delta = touchStartY - currentY;
-    setMobileFrame(frameFromDelta(delta, 90));
-  }, { passive: true });
-
-  preview.addEventListener('touchend', () => {
-    touchStartY = null;
-  }, { passive: true });
 
   shapeButtons.forEach((button) => {
     button.addEventListener('click', async () => {
@@ -413,7 +413,25 @@ document.addEventListener('DOMContentLoaded', () => {
     setDeviceMode();
   });
 
-  motionBtn.addEventListener('click', enableMotion);
+  motionBtn.addEventListener('click', () => {
+    if (!isMobileOrTablet()) return;
+    if (!selectedShape || !selectedColor) {
+      startMotionPermissionFlow();
+      return;
+    }
+    openMotionModal();
+  });
+
+  modalCancel?.addEventListener('click', closeMotionModal);
+
+  modalAccept?.addEventListener('click', async () => {
+    closeMotionModal();
+    await startMotionPermissionFlow();
+  });
+
+  modal?.addEventListener('click', (event) => {
+    if (event.target === modal) closeMotionModal();
+  });
 
   if (typeof MOBILE_QUERY.addEventListener === 'function') {
     MOBILE_QUERY.addEventListener('change', () => {
