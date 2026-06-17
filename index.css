@@ -29,7 +29,7 @@
   }
 }
 
-/* === FINAL RESPONSIVE LOGO FIX V3 === */
+/* === FINAL RESPONSIVE LOGO FIX V2 === */
 .brand-logo {
   gap: 0 !important;
   flex: 0 1 auto;
@@ -52,63 +52,23 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   .header-inner {
     overflow: hidden;
   }
 
   .brand-logo-img {
-    height: 25px;
-    max-width: 122px;
+    height: 26px;
+    max-width: 128px;
   }
 }
 
 @media (max-width: 390px) {
   .brand-logo-img {
     height: 22px;
-    max-width: 108px;
+    max-width: 110px;
   }
 }
 
-
-/* === FINAL INDEX TEXT / HOVER FIX === */
-.hero h1 {
-  margin-bottom: 24px;
-}
-
-.hero-actions {
-  margin-bottom: 70px;
-}
-
-.hero-scroll {
-  bottom: 22px;
-  pointer-events: none;
-}
-
-.feature-card:hover,
-.palette-chip:hover {
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-.feature-card:hover:before {
-  transform: scaleX(0) !important;
-}
-
-.palette-chip {
-  cursor: default !important;
-}
-
-@media (max-width: 600px) {
-  .hero {
-    padding-bottom: 120px;
-  }
-
-  .hero-actions {
-    margin-bottom: 82px;
-  }
-
-  .hero-scroll {
-    bottom: 24px;
-  }
-}
+/* === CLEAN FINAL INDEX FIX === */
+.hero h1{margin-bottom:24px}.hero-actions{margin-bottom:78px}.hero-scroll{bottom:24px;pointer-events:none}.feature-card:hover,.palette-chip:hover{transform:none!important;box-shadow:none!important}.feature-card:hover:before{transform:scaleX(0)!important}.palette-chip{cursor:default!important}@media(max-width:600px){.hero{padding-bottom:125px}.hero-actions{margin-bottom:88px}.hero-scroll{bottom:26px}}

@@ -26,7 +26,7 @@
         <div class="demo-intro">
           <span class="hero-eyebrow">Interactive demo</span>
           <h1>Anima <em>Colour</em></h1>
-          <p>Select a shape and a colour. On mobile and tablet, tap Enable motion, allow access, then tilt your device up and down. On desktop, the matching GIF plays automatically.</p>
+          <p>Select a shape and a colour. On mobile, choose the motion effect or GIF mode. Hold your phone upright, then tilt it gently to reveal the effect.</p>
         </div>
 
         <section class="demo-interface" aria-label="Interactive demonstration interface">
@@ -35,12 +35,8 @@
             <div class="preview-container">
               <div id="animated-preview" class="animated-preview empty-state"><span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p></div>
             </div>
-            <div class="motion-help"><span class="motion-dot"></span><p id="motion-status">Mobile/tablet: select a shape and colour, then enable motion. Desktop: automatic GIF.</p></div><p id="motion-debug" class="motion-debug" aria-live="polite"></p>
-            <div class="motion-info-card">
-              <span class="motion-info-icon">i</span>
-              <p>On mobile, allow motion access, hold your phone upright, then tilt it gently to reveal the effect. If motion is refused, the animated GIF will be shown instead.</p>
-            </div>
-            <div class="preview-actions"><button id="motion-permission-btn" class="btn btn-primary" type="button">Enable motion</button><button id="reset-btn" class="btn btn-secondary reset-action" type="button">Recommencer</button></div>
+            <div class="motion-help"><span class="motion-dot"></span><p id="motion-status">Mobile/tablet: select a shape and colour, then enable motion. Desktop: automatic GIF.</p></div><p id="motion-debug" class="motion-debug" aria-live="polite"></p><div class="motion-info-card"><span class="motion-info-icon">i</span><p>For the phone effect, accept motion access, keep the phone upright, then move it gently. If you refuse, the demo switches to GIF mode.</p></div>
+            <div class="preview-actions"><button id="motion-permission-btn" class="btn btn-primary" type="button">Enable motion</button><button id="gif-mode-btn" class="btn btn-secondary" type="button">Use GIF mode</button><button id="reset-btn" class="btn btn-secondary reset-action" type="button">Recommencer à zéro</button></div>
           </section>
 
           <aside class="choice-panel shapes-panel">
@@ -73,13 +69,13 @@
   <div id="motion-modal" class="motion-modal" aria-hidden="true">
     <div class="motion-modal-card" role="dialog" aria-modal="true" aria-labelledby="motion-modal-title">
       <div class="motion-modal-icon">↕</div>
-      <h2 id="motion-modal-title">Enable motion demo</h2>
-      <p>Allow motion access, hold your phone upright, then move it gently around 40° beta to see the security effect react in real time.</p>
+      <h2 id="motion-modal-title">Enable motion effect</h2>
+      <p>To make the animation react to your phone, allow motion access on your iPhone, then tilt the device up and down slowly.</p>
       <div class="motion-modal-actions">
-        <button id="motion-modal-cancel" class="btn btn-secondary" type="button">Cancel</button>
+        <button id="motion-modal-cancel" class="btn btn-secondary" type="button">Use GIF mode</button>
         <button id="motion-modal-accept" class="btn btn-primary" type="button">Allow motion</button>
       </div>
-      <small>If you refuse access, the mobile version will automatically display the animated GIF instead.</small>
+      <small>If you choose GIF mode, you can still change your mind later.</small>
     </div>
   </div>
 
