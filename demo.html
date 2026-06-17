@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Interactive Demo — Oberthur Fiduciaire</title>
+  <title>Anima Colour Demo — Oberthur Fiduciaire</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -12,38 +12,76 @@
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a href="index.html" class="brand brand-logo" aria-label="Oberthur Fiduciaire home"><img src="Logo_oberthur.png" alt="Oberthur Fiduciaire" class="brand-logo-img" /></a>
+      <a href="index.html" class="brand brand-logo" aria-label="Oberthur Fiduciaire home">
+        <img src="Logo_oberthur.png" alt="Oberthur Fiduciaire" class="brand-logo-img" />
+      </a>
       <nav class="main-nav" aria-label="Main navigation">
-        <ul><li><a href="index.html">Home</a></li><li><a href="demo.html" class="active">Demo</a></li><li><a href="contact.html">Contact</a></li></ul>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="demo.html" class="active">Demo</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
       </nav>
     </div>
   </header>
 
   <main>
     <section class="demo-section">
-      <div class="hero-bg-grid"></div><div class="hero-orb orb-1"></div><div class="hero-orb orb-2"></div><div class="hero-orb orb-3"></div>
+      <div class="hero-bg-grid"></div>
+      <div class="hero-orb orb-1"></div>
+      <div class="hero-orb orb-2"></div>
+      <div class="hero-orb orb-3"></div>
+
       <div class="container">
         <div class="demo-intro">
           <span class="hero-eyebrow">Interactive demo</span>
           <h1>Anima <em>Colour</em></h1>
-          <p>Select a shape and a colour. On mobile, choose the motion effect or GIF mode. Hold your phone upright, then tilt it gently to reveal the effect.</p>
+          <p>Select a shape and a colour. On mobile, allow motion access for the live effect, or choose GIF mode.</p>
         </div>
 
         <section class="demo-interface" aria-label="Interactive demonstration interface">
           <section class="preview-panel">
-            <div class="preview-topline"><span id="device-mode">Desktop mode</span><span id="selection-label">No selection</span></div>
-            <div class="preview-container">
-              <div id="animated-preview" class="animated-preview empty-state"><span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p></div>
+            <div class="preview-topline">
+              <span id="device-mode">Desktop mode</span>
+              <span id="selection-label">No selection</span>
             </div>
-            <div class="motion-help"><span class="motion-dot"></span><p id="motion-status">Mobile/tablet: select a shape and colour, then enable motion. Desktop: automatic GIF.</p></div><p id="motion-debug" class="motion-debug" aria-live="polite"></p><div class="motion-info-card"><span class="motion-info-icon">i</span><p>For the phone effect, accept motion access, keep the phone upright, then move it gently. If you refuse, the demo switches to GIF mode.</p></div>
-            <div class="preview-actions"><button id="motion-permission-btn" class="btn btn-primary" type="button">Enable motion</button><button id="gif-mode-btn" class="btn btn-secondary" type="button">Use GIF mode</button><button id="reset-btn" class="btn btn-secondary reset-action" type="button">Recommencer à zéro</button></div>
+
+            <div class="preview-container">
+              <div id="animated-preview" class="animated-preview empty-state">
+                <span class="preview-kicker">Preview</span>
+                <p>Select a shape and a colour to see the animation.</p>
+              </div>
+            </div>
+
+            <div class="motion-help">
+              <span class="motion-dot"></span>
+              <p id="motion-status">Select one shape and one colour to start.</p>
+            </div>
+            <p id="motion-debug" class="motion-debug" aria-live="polite"></p>
+
+            <div class="motion-info-card">
+              <span class="motion-info-icon">i</span>
+              <p>For the phone effect, accept motion access, keep the phone upright, then move it gently. If you refuse, the demo switches to GIF mode.</p>
+            </div>
+
+            <div class="preview-actions">
+              <button id="motion-permission-btn" class="btn btn-primary" type="button">Enable motion</button>
+              <button id="gif-mode-btn" class="btn btn-secondary" type="button">Use GIF mode</button>
+              <button id="reset-btn" class="btn btn-secondary reset-action" type="button">Recommencer à zéro</button>
+            </div>
           </section>
 
           <aside class="choice-panel shapes-panel">
             <div class="panel-heading"><span>01</span><h2>Available shapes</h2></div>
             <div class="shapes-grid">
-              <button class="shape-btn" type="button" data-shape="Butterfly"><div class="shape-preview"><img src="formes/Butterfly_BlackWhite.gif" alt="Butterfly shape" class="shape-gif" /></div><div class="shape-info"><strong>Butterfly</strong><span>Static image · Grow</span></div></button>
-              <button class="shape-btn" type="button" data-shape="Switch"><div class="shape-preview"><img src="formes/Switch_BlackWhite.gif" alt="Switch shape" class="shape-gif" /></div><div class="shape-info"><strong>Switch</strong><span>Static image · Grow</span></div></button>
+              <button class="shape-btn" type="button" data-shape="Butterfly">
+                <div class="shape-preview"><img src="formes/Butterfly_BlackWhite.gif" alt="Butterfly shape" class="shape-gif" /></div>
+                <div class="shape-info"><strong>Butterfly</strong><span>Static image · Grow</span></div>
+              </button>
+              <button class="shape-btn" type="button" data-shape="Switch">
+                <div class="shape-preview"><img src="formes/Switch_BlackWhite.gif" alt="Switch shape" class="shape-gif" /></div>
+                <div class="shape-info"><strong>Switch</strong><span>Static image · Grow</span></div>
+              </button>
             </div>
           </aside>
 
@@ -65,12 +103,11 @@
     </section>
   </main>
 
-
   <div id="motion-modal" class="motion-modal" aria-hidden="true">
     <div class="motion-modal-card" role="dialog" aria-modal="true" aria-labelledby="motion-modal-title">
       <div class="motion-modal-icon">↕</div>
       <h2 id="motion-modal-title">Enable motion effect</h2>
-      <p>To make the animation react to your phone, allow motion access on your iPhone, then tilt the device up and down slowly.</p>
+      <p>Allow motion access, hold your phone upright, then tilt it gently to reveal the security effect.</p>
       <div class="motion-modal-actions">
         <button id="motion-modal-cancel" class="btn btn-secondary" type="button">Use GIF mode</button>
         <button id="motion-modal-accept" class="btn btn-primary" type="button">Allow motion</button>
