@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const deviceMode = document.getElementById('device-mode');
   const selectionLabel = document.getElementById('selection-label');
   const motionStatus = document.getElementById('motion-status');
+  const motionDebug = document.getElementById('motion-debug');
 
   const modal = document.getElementById('motion-modal');
   const modalAccept = document.getElementById('motion-modal-accept');
@@ -21,9 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let resolvedFrameCache = new Map();
   let currentIndex = Math.floor(FRAME_COUNT / 2);
   let motionEnabled = false;
-  let neutralTilt = null;
+  let neutralValue = null;
   let lastFrameUpdate = 0;
-  let lastSensorEventAt = 0;
+  let sensorEvents = 0;
   let orientationHandlerAttached = false;
   let motionHandlerAttached = false;
 
@@ -31,9 +32,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return MOBILE_QUERY.matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
 
+  function debug(message) {
+    if (motionDebug) motionDebug.textContent = message || '';
+  }
+
   function openMotionModal() {
     if (!modal) {
-      startMotionPermissionFlow();
+      enableMotionFromUserGesture();
       return;
     }
     modal.classList.add('is-open');
@@ -66,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const upper = color.toUpperCase();
     const candidates = [color, upper, lower];
 
-    // Compatibility with a possible existing typo.
     if (color === 'Amethyst') candidates.push('Amethys', 'AMETHYS', 'amethys');
 
     return [...new Set(candidates)];
@@ -74,7 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function frameCandidatePaths(shape, color, frameNumber) {
     const folders = colorFolderCandidates(color);
-    const numbers = [String(frameNumber), String(frameNumber).padStart(2, '0')];
+    const numbers = [
+      String(frameNumber),
+      String(frameNumber).padStart(2, '0'),
+      `${color}_${frameNumber}`,
+      `${color}_${String(frameNumber).padStart(2, '0')}`,
+      `${color.toUpperCase()}_${frameNumber}`,
+      `${color.toUpperCase()}_${String(frameNumber).padStart(2, '0')}`
+    ];
     const exts = ['png', 'PNG', 'jpg', 'JPG', 'jpeg', 'JPEG', 'webp', 'WEBP'];
     const paths = [];
 
@@ -86,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    return paths;
+    return [...new Set(paths)];
   }
 
   function loadImage(src) {
@@ -109,9 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const validSrc = await loadImage(src);
         resolvedFrameCache.set(cacheKey, validSrc);
         return validSrc;
-      } catch (error) {
-        // Try next possible filename.
-      }
+      } catch (error) {}
     }
 
     resolvedFrameCache.set(cacheKey, null);
@@ -120,11 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function preloadMobileFrames(shape, color) {
     const frames = [];
-
     for (let i = 1; i <= FRAME_COUNT; i += 1) {
       frames.push(await resolveFrame(shape, color, i));
     }
-
     return frames;
   }
 
@@ -139,7 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
     preview.innerHTML = '<span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p>';
     mobileFrames = [];
     currentIndex = Math.floor(FRAME_COUNT / 2);
-    neutralTilt = null;
+    neutralValue = null;
+    debug('');
   }
 
   function missingMobileMessage() {
@@ -181,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileFrames = [];
         preview.innerHTML = missingMobileMessage();
         motionStatus.textContent = 'Mobile frames were not found. Check folder names and image names.';
+        debug('No mobile frame found. The gyroscope can work only if the images exist in the expected folders.');
         return;
       }
 
@@ -191,14 +200,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       currentIndex = Math.floor(FRAME_COUNT / 2);
-      neutralTilt = null;
+      neutralValue = null;
       preview.innerHTML = `<img id="anima-effect" src="${mobileFrames[currentIndex]}" alt="${selectedShape} ${selectedColor} tilt animation" class="preview-render phone-render" draggable="false" />`;
 
       motionBtn.disabled = false;
       motionBtn.textContent = motionEnabled ? 'Recalibrate motion' : 'Enable motion';
       motionStatus.textContent = motionEnabled
-        ? 'Motion is enabled. Tilt the phone up and down. Tap the button again to recalibrate.'
+        ? 'Motion is enabled. Tilt the phone up and down. Tap again to recalibrate.'
         : 'Tap Enable motion, allow access, then tilt the phone up and down.';
+      debug(`${validFrames.length}/${FRAME_COUNT} mobile frames loaded.`);
       return;
     }
 
@@ -227,50 +237,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const center = (FRAME_COUNT - 1) / 2;
     const movement = currentIndex - center;
-
-    img.style.transform = `translateY(${movement * 7}px) scale(${1 + Math.abs(movement) * 0.012})`;
+    img.style.transform = `translateY(${movement * 8}px) scale(${1 + Math.abs(movement) * 0.014})`;
   }
 
-  function getOrientationTilt(event) {
-    const beta = typeof event.beta === 'number' ? event.beta : null;
-    const gamma = typeof event.gamma === 'number' ? event.gamma : null;
-    const angle = screen.orientation && typeof screen.orientation.angle === 'number'
-      ? screen.orientation.angle
-      : (typeof window.orientation === 'number' ? window.orientation : 0);
-
-    if (Math.abs(angle) === 90 && gamma !== null) return gamma;
-    if (beta !== null) return beta;
-    return gamma;
-  }
-
-  function frameFromDelta(delta, range) {
+  function frameFromValue(value, center, range) {
+    const delta = value - center;
     const clamped = Math.max(-range, Math.min(range, delta));
     const normalized = (clamped + range) / (range * 2);
     return Math.round(normalized * (FRAME_COUNT - 1));
   }
 
+  function getBestTiltValue(event) {
+    const beta = typeof event.beta === 'number' ? event.beta : null;
+    const gamma = typeof event.gamma === 'number' ? event.gamma : null;
+
+    const orientationAngle =
+      (screen.orientation && typeof screen.orientation.angle === 'number')
+        ? screen.orientation.angle
+        : (typeof window.orientation === 'number' ? window.orientation : 0);
+
+    // Portrait: beta reacts clearly to up/down tilt.
+    if (Math.abs(orientationAngle) !== 90 && beta !== null) return beta;
+
+    // Landscape: gamma is usually the useful axis.
+    if (gamma !== null) return gamma;
+    return beta;
+  }
+
   function handleOrientation(event) {
     if (!motionEnabled || !isMobileOrTablet() || !mobileFrames.length) return;
 
-    const tilt = getOrientationTilt(event);
-    if (tilt === null || typeof tilt === 'undefined') return;
+    const value = getBestTiltValue(event);
+    if (typeof value !== 'number') return;
 
-    lastSensorEventAt = Date.now();
+    sensorEvents += 1;
 
-    if (neutralTilt === null) {
-      neutralTilt = tilt;
+    if (neutralValue === null) {
+      neutralValue = value;
       motionStatus.textContent = 'Motion enabled. Tilt up and down slowly.';
     }
 
-    const delta = tilt - neutralTilt;
-    setMobileFrame(frameFromDelta(delta, 16));
+    const frame = frameFromValue(value, neutralValue, 14);
+    setMobileFrame(frame);
+
+    if (sensorEvents % 8 === 0) {
+      debug(`Sensor OK · beta: ${event.beta?.toFixed?.(1) ?? '-'} · gamma: ${event.gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1}`);
+    }
   }
 
   function handleMotion(event) {
     if (!motionEnabled || !isMobileOrTablet() || !mobileFrames.length) return;
 
-    // Orientation is cleaner; motion is fallback only when orientation events do not arrive.
-    if (Date.now() - lastSensorEventAt < 250) return;
+    // Fallback when deviceorientation is silent.
+    if (sensorEvents > 0) return;
 
     const gravity = event.accelerationIncludingGravity;
     if (!gravity) return;
@@ -278,30 +297,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const value = typeof gravity.y === 'number' ? gravity.y : gravity.x;
     if (typeof value !== 'number') return;
 
-    lastSensorEventAt = Date.now();
+    sensorEvents += 1;
 
-    if (neutralTilt === null) {
-      neutralTilt = value;
+    if (neutralValue === null) {
+      neutralValue = value;
       motionStatus.textContent = 'Motion enabled. Tilt up and down slowly.';
     }
 
-    const delta = value - neutralTilt;
-    setMobileFrame(frameFromDelta(delta, 3));
+    const frame = frameFromValue(value, neutralValue, 3);
+    setMobileFrame(frame);
+
+    if (sensorEvents % 8 === 0) {
+      debug(`Motion sensor OK · value: ${value.toFixed(2)} · frame: ${currentIndex + 1}`);
+    }
   }
 
-  async function requestSensorPermission() {
+  async function requestSensorPermissionNow() {
+    const isSecure = window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost';
+
+    if (!isSecure) {
+      motionStatus.textContent = 'Motion needs HTTPS. Test it from the GitHub Pages link, not from a local file.';
+      debug('Not a secure context: iPhone blocks motion sensors outside HTTPS.');
+      return false;
+    }
+
+    // IMPORTANT: On iPhone this function must be called directly from the button click.
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       const permission = await DeviceOrientationEvent.requestPermission();
       if (permission !== 'granted') return false;
     }
 
+    // Do not block everything if DeviceMotionEvent fails. Orientation is enough.
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
       try {
-        const permission = await DeviceMotionEvent.requestPermission();
-        if (permission !== 'granted') return false;
-      } catch (error) {
-        // Orientation permission is enough for the demo.
-      }
+        await DeviceMotionEvent.requestPermission();
+      } catch (error) {}
     }
 
     return true;
@@ -319,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function startMotionPermissionFlow() {
+  async function enableMotionFromUserGesture() {
     if (!isMobileOrTablet()) return;
 
     if (!selectedShape || !selectedColor) {
@@ -331,50 +361,54 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (!mobileFrames.length) {
-      await showPreview();
-    }
-
     motionBtn.disabled = true;
     motionBtn.textContent = 'Requesting access…';
     motionStatus.textContent = 'Accept the iPhone permission popup if it appears.';
+    debug('Waiting for iPhone motion permission…');
 
     try {
-      const granted = await requestSensorPermission();
+      // Permission is requested BEFORE loading images, so iPhone keeps the user gesture.
+      const granted = await requestSensorPermissionNow();
 
       if (!granted) {
         motionEnabled = false;
         motionBtn.disabled = false;
         motionBtn.textContent = 'Enable motion';
-        motionStatus.textContent = 'Motion permission was denied. Tap Enable motion again and choose Allow.';
+        motionStatus.textContent = 'Motion permission was denied or blocked.';
+        debug('On iPhone: Settings > Safari > Motion & Orientation Access must be enabled.');
         return;
       }
 
       motionEnabled = true;
-      neutralTilt = null;
-      lastSensorEventAt = 0;
+      neutralValue = null;
+      sensorEvents = 0;
       attachSensorHandlers();
+
+      if (!mobileFrames.length) {
+        await showPreview();
+      }
 
       motionBtn.disabled = false;
       motionBtn.textContent = 'Recalibrate motion';
       motionStatus.textContent = 'Motion enabled. Hold the phone normally, then tilt up and down slowly.';
+      debug('Permission granted. Waiting for sensor movement…');
+
+      // Force the image to the middle at start.
+      setMobileFrame(Math.floor(FRAME_COUNT / 2));
 
       setTimeout(() => {
-        if (motionEnabled && lastSensorEventAt === 0) {
-          motionStatus.textContent = 'No movement detected yet. On iPhone: Settings > Safari > Motion & Orientation Access must be enabled.';
+        if (motionEnabled && sensorEvents === 0) {
+          motionStatus.textContent = 'Permission is OK, but no sensor data arrived.';
+          debug('On iPhone, check: Settings > Safari > Motion & Orientation Access. Also test in Safari, not inside another app preview.');
         }
       }, 2500);
     } catch (error) {
       motionEnabled = false;
       motionBtn.disabled = false;
       motionBtn.textContent = 'Enable motion';
-      motionStatus.textContent = 'Motion could not start. On iPhone, check Safari Motion & Orientation Access.';
+      motionStatus.textContent = 'Motion could not start.';
+      debug('iPhone may block the sensor if the permission request is not triggered directly by the Allow button.');
     }
-  }
-
-  function applySelectionScroll() {
-    if (!isMobileOrTablet()) return;
-    document.querySelector('.preview-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   shapeButtons.forEach((button) => {
@@ -382,9 +416,8 @@ document.addEventListener('DOMContentLoaded', () => {
       shapeButtons.forEach((btn) => btn.classList.remove('active'));
       button.classList.add('active');
       selectedShape = button.dataset.shape;
-      neutralTilt = null;
+      neutralValue = null;
       await showPreview();
-      applySelectionScroll();
     });
   });
 
@@ -393,17 +426,17 @@ document.addEventListener('DOMContentLoaded', () => {
       colorOptions.forEach((color) => color.classList.remove('active'));
       option.classList.add('active');
       selectedColor = option.dataset.color;
-      neutralTilt = null;
+      neutralValue = null;
       await showPreview();
-      applySelectionScroll();
     });
   });
 
   resetBtn.addEventListener('click', () => {
     selectedShape = null;
     selectedColor = null;
-    neutralTilt = null;
+    neutralValue = null;
     motionEnabled = false;
+    sensorEvents = 0;
     shapeButtons.forEach((btn) => btn.classList.remove('active'));
     colorOptions.forEach((color) => color.classList.remove('active'));
     updateSelectionLabel();
@@ -415,18 +448,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   motionBtn.addEventListener('click', () => {
     if (!isMobileOrTablet()) return;
+
     if (!selectedShape || !selectedColor) {
-      startMotionPermissionFlow();
+      enableMotionFromUserGesture();
       return;
     }
+
     openMotionModal();
   });
 
   modalCancel?.addEventListener('click', closeMotionModal);
 
-  modalAccept?.addEventListener('click', async () => {
+  modalAccept?.addEventListener('click', () => {
     closeMotionModal();
-    await startMotionPermissionFlow();
+    enableMotionFromUserGesture();
   });
 
   modal?.addEventListener('click', (event) => {
