@@ -14,8 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalCancel = document.getElementById('motion-modal-cancel');
 
   const FRAME_COUNT = 11;
-  const NEUTRAL_BETA = 80;
-  const TILT_RANGE = 30;
+  const UPRIGHT_BETA = 80;
+  const TARGET_TILT_BETA = 50;
+  const OPPOSITE_TILT_BETA = 110;
+  const FRAME_THROTTLE_MS = 85;
+
   const MOBILE_QUERY = window.matchMedia('(max-width: 1180px), (pointer: coarse)');
 
   let selectedShape = null;
@@ -24,11 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let resolvedFrameCache = new Map();
   let currentIndex = Math.floor(FRAME_COUNT / 2);
   let motionEnabled = false;
-  let neutralValue = null;
   let lastFrameUpdate = 0;
   let sensorEvents = 0;
   let orientationHandlerAttached = false;
-  let motionHandlerAttached = false;
 
   function isMobileOrTablet() {
     return MOBILE_QUERY.matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -148,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
     preview.innerHTML = '<span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p>';
     mobileFrames = [];
     currentIndex = Math.floor(FRAME_COUNT / 2);
-    neutralValue = null;
     debug('');
   }
 
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileFrames = [];
         preview.innerHTML = missingMobileMessage();
         motionStatus.textContent = 'Mobile frames were not found. Check folder names and image names.';
-        debug('No mobile frame found. The gyroscope can work only if the images exist in the expected folders.');
+        debug('No mobile frame found.');
         return;
       }
 
@@ -202,15 +202,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       currentIndex = Math.floor(FRAME_COUNT / 2);
-      neutralValue = null;
       preview.innerHTML = `<img id="anima-effect" src="${mobileFrames[currentIndex]}" alt="${selectedShape} ${selectedColor} tilt animation" class="preview-render phone-render" draggable="false" />`;
 
       motionBtn.disabled = false;
       motionBtn.textContent = motionEnabled ? 'Recalibrate motion' : 'Enable motion';
       motionStatus.textContent = motionEnabled
-        ? 'Motion is enabled. Tilt the phone up and down. Tap again to recalibrate.'
-        : 'Tap Enable motion, allow access, then tilt the phone up and down.';
-      debug(`${validFrames.length}/${FRAME_COUNT} mobile frames loaded.`);
+        ? 'Motion is enabled. Keep the phone upright, then tilt around 18°.'
+        : 'Tap Enable motion, allow access, then keep phone upright and tilt around 18°.';
+      debug(`${validFrames.length}/${FRAME_COUNT} mobile frames loaded. Fixed beta mode: 80° → center, 50° → final.`);
       return;
     }
 
@@ -225,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setMobileFrame(index) {
     const now = performance.now();
-    if (now - lastFrameUpdate < 110) return;
+    if (now - lastFrameUpdate < FRAME_THROTTLE_MS) return;
     lastFrameUpdate = now;
 
     const img = document.getElementById('anima-effect');
@@ -242,81 +241,38 @@ document.addEventListener('DOMContentLoaded', () => {
     img.style.transform = `translateY(${movement * 5}px) scale(${1 + Math.abs(movement) * 0.008})`;
   }
 
-  function frameFromValue(value) {
-    const min = NEUTRAL_BETA - TILT_RANGE; // 50°
-    const max = NEUTRAL_BETA + TILT_RANGE; // 110°
-    const clamped = Math.max(min, Math.min(max, value));
+  function frameFromBeta(beta) {
+    // IMPORTANT:
+    // This is NOT recalibrated from the current phone position.
+    // It only reacts in the desired beta range.
+    // beta 110° => frame 1
+    // beta 80°  => middle frame
+    // beta 50°  => frame 11
+    if (typeof beta !== 'number') return currentIndex;
 
-    // New calibration:
-    // beta 80° = phone straight / neutral / middle image
-    // beta 50° = phone tilted about 18° / end image
-    // beta 110° = opposite tilt / first image
+    const min = TARGET_TILT_BETA;
+    const max = OPPOSITE_TILT_BETA;
+    const clamped = Math.max(min, Math.min(max, beta));
     const normalized = (max - clamped) / (max - min);
+
     return Math.round(normalized * (FRAME_COUNT - 1));
-  }
-
-  function getBestTiltValue(event) {
-    const beta = typeof event.beta === 'number' ? event.beta : null;
-    const gamma = typeof event.gamma === 'number' ? event.gamma : null;
-
-    const orientationAngle =
-      (screen.orientation && typeof screen.orientation.angle === 'number')
-        ? screen.orientation.angle
-        : (typeof window.orientation === 'number' ? window.orientation : 0);
-
-    // Portrait: beta reacts clearly to up/down tilt.
-    if (Math.abs(orientationAngle) !== 90 && beta !== null) return beta;
-
-    // Landscape: gamma is usually the useful axis.
-    if (gamma !== null) return gamma;
-    return beta;
   }
 
   function handleOrientation(event) {
     if (!motionEnabled || !isMobileOrTablet() || !mobileFrames.length) return;
 
-    const value = getBestTiltValue(event);
-    if (typeof value !== 'number') return;
+    const beta = typeof event.beta === 'number' ? event.beta : null;
+    const gamma = typeof event.gamma === 'number' ? event.gamma : null;
+
+    if (beta === null) return;
 
     sensorEvents += 1;
 
-    if (neutralValue === null) {
-      neutralValue = value;
-      motionStatus.textContent = 'Motion enabled. Tilt up and down slowly.';
-    }
-
-    const frame = frameFromValue(value);
+    const frame = frameFromBeta(beta);
     setMobileFrame(frame);
 
-    if (sensorEvents % 8 === 0) {
-      debug(`Sensor OK · beta: ${event.beta?.toFixed?.(1) ?? '-'} · gamma: ${event.gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1} · neutral: 80° / tilt: 50°`);
-    }
-  }
-
-  function handleMotion(event) {
-    if (!motionEnabled || !isMobileOrTablet() || !mobileFrames.length) return;
-
-    // Fallback when deviceorientation is silent.
-    if (sensorEvents > 0) return;
-
-    const gravity = event.accelerationIncludingGravity;
-    if (!gravity) return;
-
-    const value = typeof gravity.y === 'number' ? gravity.y : gravity.x;
-    if (typeof value !== 'number') return;
-
-    sensorEvents += 1;
-
-    if (neutralValue === null) {
-      neutralValue = value;
-      motionStatus.textContent = 'Motion enabled. Tilt up and down slowly.';
-    }
-
-    const frame = frameFromValue(value);
-    setMobileFrame(frame);
-
-    if (sensorEvents % 8 === 0) {
-      debug(`Motion sensor OK · value: ${value.toFixed(2)} · frame: ${currentIndex + 1}`);
+    if (sensorEvents % 6 === 0) {
+      debug(`Sensor OK · beta: ${beta.toFixed(1)} · gamma: ${gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1} · target: 80°→center / 50°→final`);
     }
   }
 
@@ -329,17 +285,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return false;
     }
 
-    // IMPORTANT: On iPhone this function must be called directly from the button click.
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       const permission = await DeviceOrientationEvent.requestPermission();
       if (permission !== 'granted') return false;
-    }
-
-    // Do not block everything if DeviceMotionEvent fails. Orientation is enough.
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-      try {
-        await DeviceMotionEvent.requestPermission();
-      } catch (error) {}
     }
 
     return true;
@@ -349,11 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!orientationHandlerAttached) {
       window.addEventListener('deviceorientation', handleOrientation, true);
       orientationHandlerAttached = true;
-    }
-
-    if (!motionHandlerAttached) {
-      window.addEventListener('devicemotion', handleMotion, true);
-      motionHandlerAttached = true;
     }
   }
 
@@ -375,7 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
     debug('Waiting for iPhone motion permission…');
 
     try {
-      // Permission is requested BEFORE loading images, so iPhone keeps the user gesture.
       const granted = await requestSensorPermissionNow();
 
       if (!granted) {
@@ -388,7 +330,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       motionEnabled = true;
-      neutralValue = null;
       sensorEvents = 0;
       attachSensorHandlers();
 
@@ -398,24 +339,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       motionBtn.disabled = false;
       motionBtn.textContent = 'Recalibrate motion';
-      motionStatus.textContent = 'Motion enabled. Hold the phone normally, then tilt up and down slowly.';
-      debug('Permission granted. Waiting for sensor movement…');
+      motionStatus.textContent = 'Motion enabled. Keep the phone upright, then tilt around 18°.';
+      debug('Fixed beta mode enabled: 80° center, 50° final. It will not calibrate around -33°/5°.');
 
-      // Force the image to the middle at start.
       setMobileFrame(Math.floor(FRAME_COUNT / 2));
-
-      setTimeout(() => {
-        if (motionEnabled && sensorEvents === 0) {
-          motionStatus.textContent = 'Permission is OK, but no sensor data arrived.';
-          debug('On iPhone, check: Settings > Safari > Motion & Orientation Access. Also test in Safari, not inside another app preview.');
-        }
-      }, 2500);
     } catch (error) {
       motionEnabled = false;
       motionBtn.disabled = false;
       motionBtn.textContent = 'Enable motion';
       motionStatus.textContent = 'Motion could not start.';
-      debug('iPhone may block the sensor if the permission request is not triggered directly by the Allow button.');
+      debug('iPhone may block the sensor if permission is not triggered directly by the Allow button.');
     }
   }
 
@@ -424,7 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
       shapeButtons.forEach((btn) => btn.classList.remove('active'));
       button.classList.add('active');
       selectedShape = button.dataset.shape;
-      neutralValue = null;
       await showPreview();
     });
   });
@@ -434,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
       colorOptions.forEach((color) => color.classList.remove('active'));
       option.classList.add('active');
       selectedColor = option.dataset.color;
-      neutralValue = null;
       await showPreview();
     });
   });
@@ -442,7 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
   resetBtn.addEventListener('click', () => {
     selectedShape = null;
     selectedColor = null;
-    neutralValue = null;
     motionEnabled = false;
     sensorEvents = 0;
     shapeButtons.forEach((btn) => btn.classList.remove('active'));
