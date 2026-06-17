@@ -80,19 +80,50 @@ document.addEventListener('DOMContentLoaded', () => {
   function desktopGifPath(shape, color) {
     return `${shape}/${color}_tr.gif`;
   }
+
+  function desktopGifCandidates(shape, color) {
+    const colorVariants = [color, color.toUpperCase(), color.toLowerCase()];
+    if (color === 'Amethyst') colorVariants.push('Amethys', 'AMETHYS', 'amethys');
+
+    const paths = [];
+    colorVariants.forEach((name) => {
+      paths.push(`${shape}/${name}_tr.gif`);
+      paths.push(`${shape}/${name}.gif`);
+      paths.push(`${shape}/${name}_TR.gif`);
+    });
+
+    return [...new Set(paths)];
+  }
+
+  function setGifWithFallback(img, shape, color, onFail) {
+    const candidates = desktopGifCandidates(shape, color);
+    let index = 0;
+
+    function tryNext() {
+      if (index >= candidates.length) {
+        if (typeof onFail === 'function') onFail();
+        return;
+      }
+      img.src = candidates[index];
+      index += 1;
+    }
+
+    img.onerror = tryNext;
+    tryNext();
+  }
   function showGifFallbackOnMobile(reason = 'Motion access was not enabled. Showing animated GIF instead.') {
     if (!selectedShape || !selectedColor) return;
 
     mobileFrames = [];
-    frameImageCache = [];
+    if (typeof frameImageCache !== 'undefined') frameImageCache = [];
     motionEnabled = false;
     preview.className = 'animated-preview has-render';
-    preview.innerHTML = `<img src="${desktopGifPath(selectedShape, selectedColor)}" alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
+    preview.innerHTML = `<img alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
 
     const img = preview.querySelector('img');
-    img.onerror = () => {
+    setGifWithFallback(img, selectedShape, selectedColor, () => {
       preview.innerHTML = missingDesktopMessage();
-    };
+    });
 
     motionStatus.textContent = reason;
     debug('GIF fallback mode on mobile.');
@@ -245,12 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     mobileFrames = [];
-    preview.innerHTML = `<img src="${desktopGifPath(selectedShape, selectedColor)}" alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
-
+    preview.innerHTML = `<img alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
     const img = preview.querySelector('img');
-    img.onerror = () => {
+    setGifWithFallback(img, selectedShape, selectedColor, () => {
       preview.innerHTML = missingDesktopMessage();
-    };
+    });
   }
 
   function setMobileFrame(index) {
@@ -361,7 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
         motionBtn.disabled = false;
         motionBtn.textContent = 'Enable motion';
         showGifFallbackOnMobile('Motion permission was denied. Showing animated GIF instead.');
-        motionStatus.textContent = 'Motion permission was denied. Showing animated GIF instead.';
         debug('On iPhone: Settings > Safari > Motion & Orientation Access must be enabled.');
         return;
       }
@@ -416,11 +445,18 @@ document.addEventListener('DOMContentLoaded', () => {
       sensorEvents = 0;
       await showPreview();
       currentIndex = Math.floor(FRAME_COUNT / 2);
-      setMobileFrame(currentIndex);
+
+      const img = document.getElementById('anima-effect');
+      if (img && mobileFrames.length) {
+        img.src = mobileFrames[currentIndex];
+        img.style.transform = 'translateY(0) scale(1)';
+        img.style.opacity = '1';
+      }
+
       motionBtn.disabled = false;
       motionBtn.textContent = 'Enable motion';
       motionStatus.textContent = isMobileOrTablet()
-        ? 'Animation reset. Allow motion again to restart the live effect.'
+        ? 'Animation reset. The permission popup will appear again if needed.'
         : 'Desktop mode uses the animated GIF automatically.';
       debug('Animation reset to the center frame.');
       return;
@@ -450,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openMotionModal();
   });
 
-  modalCancel?.addEventListener('click', () => { closeMotionModal(); showGifFallbackOnMobile('Motion access was cancelled. Showing animated GIF instead.'); });
+  modalCancel?.addEventListener('click', () => { closeMotionModal(); showGifFallbackOnMobile('Motion access was cancelled. Showing animated GIF instead.'); }); showGifFallbackOnMobile('Motion access was cancelled. Showing animated GIF instead.'); });
 
   modalAccept?.addEventListener('click', () => {
     closeMotionModal();

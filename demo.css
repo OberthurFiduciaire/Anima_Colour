@@ -455,3 +455,54 @@
 .preview-render {
   transition: transform .11s linear, opacity .10s linear;
 }
+
+
+/* === FINAL DEMO BUTTON / FRAME FIX === */
+.preview-container {
+  min-height: 580px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.preview-actions {
+  display: flex;
+}
+
+.reset-action {
+  display: inline-flex !important;
+}
+
+@media (max-width: 760px) {
+  .preview-container {
+    min-height: 48vh;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .animated-preview {
+    min-height: 45vh;
+  }
+
+  .preview-render,
+  .phone-render {
+    max-height: 44vh;
+  }
+
+  .preview-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    position: sticky;
+    bottom: 10px;
+    z-index: 35;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  #motion-permission-btn {
+    display: none !important;
+  }
+
+  #reset-btn {
+    display: inline-flex !important;
+  }
+}

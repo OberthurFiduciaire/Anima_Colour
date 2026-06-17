@@ -69,3 +69,46 @@
     max-width: 108px;
   }
 }
+
+
+/* === FINAL INDEX TEXT / HOVER FIX === */
+.hero h1 {
+  margin-bottom: 24px;
+}
+
+.hero-actions {
+  margin-bottom: 70px;
+}
+
+.hero-scroll {
+  bottom: 22px;
+  pointer-events: none;
+}
+
+.feature-card:hover,
+.palette-chip:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.feature-card:hover:before {
+  transform: scaleX(0) !important;
+}
+
+.palette-chip {
+  cursor: default !important;
+}
+
+@media (max-width: 600px) {
+  .hero {
+    padding-bottom: 120px;
+  }
+
+  .hero-actions {
+    margin-bottom: 82px;
+  }
+
+  .hero-scroll {
+    bottom: 24px;
+  }
+}
