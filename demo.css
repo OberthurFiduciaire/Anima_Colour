@@ -404,3 +404,54 @@
     max-width: 108px;
   }
 }
+
+
+/* === ANIMATION FRAME SPACE FIX === */
+.preview-container {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.preview-render,
+.phone-render {
+  max-height: calc(100% - 22px);
+}
+
+@media (max-width: 760px) {
+  .preview-container {
+    min-height: 46vh;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .animated-preview {
+    min-height: 43vh;
+  }
+
+  .preview-render,
+  .phone-render {
+    width: min(88%, 296px);
+    max-height: 43vh;
+  }
+}
+
+@media (max-width: 390px) {
+  .preview-container {
+    min-height: 44vh;
+  }
+
+  .animated-preview {
+    min-height: 41vh;
+  }
+
+  .preview-render,
+  .phone-render {
+    max-height: 41vh;
+  }
+}
+
+
+/* === SMOOTHER IMAGE TRANSITION === */
+.preview-render {
+  transition: transform .11s linear, opacity .10s linear;
+}

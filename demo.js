@@ -15,9 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const FRAME_COUNT = 11;
   const UPRIGHT_BETA = 80;
-  const TARGET_TILT_BETA = 50;
-  const OPPOSITE_TILT_BETA = 110;
-  const FRAME_THROTTLE_MS = 85;
+  const TARGET_TILT_BETA = 40;
+  const DEAD_ZONE_BETA = 8;
+  const OPPOSITE_TILT_BETA = 120;
+  const FRAME_THROTTLE_MS = 55;
 
   const MOBILE_QUERY = window.matchMedia('(max-width: 1180px), (pointer: coarse)');
 
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let mobileFrames = [];
   let resolvedFrameCache = new Map();
   let currentIndex = Math.floor(FRAME_COUNT / 2);
+  let frameImageCache = [];
   let motionEnabled = false;
   let lastFrameUpdate = 0;
   let sensorEvents = 0;
@@ -82,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!selectedShape || !selectedColor) return;
 
     mobileFrames = [];
+    frameImageCache = [];
     motionEnabled = false;
     preview.className = 'animated-preview has-render';
     preview.innerHTML = `<img src="${desktopGifPath(selectedShape, selectedColor)}" alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />`;
@@ -229,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       currentIndex = Math.floor(FRAME_COUNT / 2);
+      frameImageCache = mobileFrames.map((src) => { const image = new Image(); image.src = src; return image; });
       preview.innerHTML = `<img id="anima-effect" src="${mobileFrames[currentIndex]}" alt="${selectedShape} ${selectedColor} tilt animation" class="preview-render phone-render" draggable="false" />`;
 
       motionBtn.disabled = false;
@@ -236,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
       motionStatus.textContent = motionEnabled
         ? 'Motion is enabled. Keep the phone upright, then tilt around 18°.'
         : 'Tap Enable motion, allow access, then keep phone upright and tilt around 18°.';
-      debug(`${validFrames.length}/${FRAME_COUNT} mobile frames loaded. Fixed beta mode: 80° → center, 50° → final.`);
+      debug(`${validFrames.length}/${FRAME_COUNT} mobile frames loaded. Fixed beta mode: 80° → center, 40° → final.`);
       return;
     }
 
@@ -261,7 +265,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (safeIndex === currentIndex) return;
 
     currentIndex = safeIndex;
-    img.src = mobileFrames[currentIndex];
+    img.style.opacity = '0.88';
+    img.src = frameImageCache[currentIndex]?.src || mobileFrames[currentIndex];
+    requestAnimationFrame(() => {
+      img.style.opacity = '1';
+    });
 
     const center = (FRAME_COUNT - 1) / 2;
     const movement = currentIndex - center;
@@ -269,18 +277,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function frameFromBeta(beta) {
-    // IMPORTANT:
-    // This is NOT recalibrated from the current phone position.
-    // It only reacts in the desired beta range.
-    // beta 110° => frame 1
-    // beta 80°  => middle frame
-    // beta 50°  => frame 11
     if (typeof beta !== 'number') return currentIndex;
 
-    const min = TARGET_TILT_BETA;
-    const max = OPPOSITE_TILT_BETA;
-    const clamped = Math.max(min, Math.min(max, beta));
-    const normalized = (max - clamped) / (max - min);
+    // Phone upright around 80°
+    // No animation between 80° and 72°
+    if (beta >= (UPRIGHT_BETA - DEAD_ZONE_BETA)) {
+      return 0;
+    }
+
+    const start = UPRIGHT_BETA - DEAD_ZONE_BETA; // 72°
+    const end = TARGET_TILT_BETA; // 40°
+
+    const clamped = Math.max(end, Math.min(start, beta));
+    const normalized = (start - clamped) / (start - end);
 
     return Math.round(normalized * (FRAME_COUNT - 1));
   }
@@ -299,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setMobileFrame(frame);
 
     if (sensorEvents % 6 === 0) {
-      debug(`Sensor OK · beta: ${beta.toFixed(1)} · gamma: ${gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1} · target: 80°→center / 50°→final`);
+      debug(`Sensor OK · beta: ${beta.toFixed(1)} · gamma: ${gamma?.toFixed?.(1) ?? '-'} · frame: ${currentIndex + 1} · target: 80°→center / 40°→final`);
     }
   }
 
@@ -401,7 +410,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  resetBtn.addEventListener('click', () => {
+  resetBtn.addEventListener('click', async () => {
+    if (selectedShape && selectedColor) {
+      motionEnabled = false;
+      sensorEvents = 0;
+      await showPreview();
+      currentIndex = Math.floor(FRAME_COUNT / 2);
+      setMobileFrame(currentIndex);
+      motionBtn.disabled = false;
+      motionBtn.textContent = 'Enable motion';
+      motionStatus.textContent = isMobileOrTablet()
+        ? 'Animation reset. Allow motion again to restart the live effect.'
+        : 'Desktop mode uses the animated GIF automatically.';
+      debug('Animation reset to the center frame.');
+      return;
+    }
+
     selectedShape = null;
     selectedColor = null;
     motionEnabled = false;
@@ -426,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openMotionModal();
   });
 
-  modalCancel?.addEventListener('click', closeMotionModal);
+  modalCancel?.addEventListener('click', () => { closeMotionModal(); showGifFallbackOnMobile('Motion access was cancelled. Showing animated GIF instead.'); });
 
   modalAccept?.addEventListener('click', () => {
     closeMotionModal();

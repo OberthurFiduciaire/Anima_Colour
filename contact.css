@@ -106,3 +106,18 @@
     border-radius: 22px;
   }
 }
+
+
+/* === CONTACT NAV OFFSET FIX === */
+@media (min-width: 761px) {
+  .contact-page {
+    padding-top: 190px;
+    align-items: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .contact-page {
+    padding-top: 28px;
+  }
+}
