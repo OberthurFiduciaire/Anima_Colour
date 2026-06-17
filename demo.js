@@ -7,25 +7,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const deviceMode = document.getElementById('device-mode');
   const selectionLabel = document.getElementById('selection-label');
 
+  const FRAME_COUNT = 11;
+  const MOBILE_BREAKPOINT = window.matchMedia('(max-width: 1180px)');
+  const TOUCH_DEVICE = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+  const isMobileOrTablet = MOBILE_BREAKPOINT.matches || TOUCH_DEVICE;
+
   let selectedShape = null;
   let selectedColor = null;
   let mobileFrames = [];
-  let currentIndex = 0;
+  let currentIndex = 5;
   let motionEnabled = false;
   let lastFrameUpdate = 0;
-
-  const SHAPES = ['Butterfly', 'Switch'];
-  const COLORS = ['Emerald', 'Tourmaline', 'Citrine', 'Topaz', 'Ruby', 'Sapphire', 'Amethyst', 'Aquamarine'];
-  const FRAME_COUNT = 11;
-
-  const isMobile =
-    window.matchMedia('(max-width: 760px)').matches ||
-    window.matchMedia('(pointer: coarse)').matches ||
-    'ontouchstart' in window;
+  let neutralBeta = null;
 
   function setDeviceMode() {
-    deviceMode.textContent = isMobile ? 'Mode téléphone' : 'Mode ordinateur';
-    motionBtn.style.display = isMobile ? 'inline-flex' : 'none';
+    deviceMode.textContent = isMobileOrTablet ? 'Mobile / tablet mode' : 'Desktop mode';
+    motionBtn.style.display = isMobileOrTablet ? 'inline-flex' : 'none';
   }
 
   function desktopGifPath(shape, color) {
@@ -33,10 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function framePaths(shape, color) {
-    return Array.from(
-      { length: FRAME_COUNT },
-      (_, index) => `${shape}_telephone/${color}/${index + 1}.png`
-    );
+    return Array.from({ length: FRAME_COUNT }, (_, i) => `${shape}_telephone/${color}/${i + 1}.png`);
   }
 
   function preload(paths) {
@@ -47,26 +41,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateSelectionLabel() {
-    if (!selectedShape && !selectedColor) {
-      selectionLabel.textContent = 'Aucune sélection';
-      return;
-    }
-    selectionLabel.textContent = `${selectedShape || 'Forme'} · ${selectedColor || 'Couleur'}`;
+    selectionLabel.textContent = selectedShape && selectedColor ? `${selectedShape} · ${selectedColor}` : 'No selection';
   }
 
   function showEmpty() {
     preview.className = 'animated-preview empty-state';
-    preview.innerHTML = `
-      <span class="preview-kicker">Aperçu</span>
-      <p>Sélectionnez une forme et une couleur pour voir l’animation.</p>
-    `;
+    preview.innerHTML = '<span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p>';
     mobileFrames = [];
-    currentIndex = 0;
+    currentIndex = 5;
+    neutralBeta = null;
+  }
+
+  function showMissingNote(kind) {
+    return `<p class="fallback-note">${kind} not found yet. Add the files with the exact folder names shown in your project.</p>`;
   }
 
   function showPreview() {
     updateSelectionLabel();
-
     if (!selectedShape || !selectedColor) {
       showEmpty();
       return;
@@ -74,41 +65,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     preview.className = 'animated-preview has-render';
 
-    if (isMobile) {
+    if (isMobileOrTablet) {
       mobileFrames = framePaths(selectedShape, selectedColor);
       preload(mobileFrames);
-      currentIndex = Math.floor(mobileFrames.length / 2);
-
+      currentIndex = Math.floor(FRAME_COUNT / 2);
       preview.innerHTML = `
-        <img
-          id="anima-effect"
-          src="${mobileFrames[currentIndex]}"
-          alt="Animation ${selectedShape} ${selectedColor}"
-          class="preview-render phone-render"
-          draggable="false"
-        />
+        <img id="anima-effect" src="${mobileFrames[currentIndex]}" alt="${selectedShape} ${selectedColor} tilt animation" class="preview-render phone-render" draggable="false" />
       `;
-
+      const img = document.getElementById('anima-effect');
+      img.onerror = () => {
+        img.onerror = null;
+        img.src = desktopGifPath(selectedShape, selectedColor);
+        preview.insertAdjacentHTML('beforeend', showMissingNote('Mobile frames'));
+      };
       motionBtn.style.display = 'inline-flex';
       motionBtn.disabled = motionEnabled;
-      motionBtn.textContent = motionEnabled ? 'Mouvement activé' : 'Activer le mouvement';
+      motionBtn.textContent = motionEnabled ? 'Motion enabled' : 'Enable motion';
       return;
     }
 
     mobileFrames = [];
     preview.innerHTML = `
-      <img
-        src="${desktopGifPath(selectedShape, selectedColor)}"
-        alt="GIF animé ${selectedShape} ${selectedColor}"
-        class="preview-render"
-        draggable="false"
-      />
+      <img src="${desktopGifPath(selectedShape, selectedColor)}" alt="Animated GIF ${selectedShape} ${selectedColor}" class="preview-render" draggable="false" />
     `;
+    const img = preview.querySelector('img');
+    img.onerror = () => {
+      preview.innerHTML = `<div class="empty-state"><span class="preview-kicker">Missing GIF</span><p>Add ${desktopGifPath(selectedShape, selectedColor)} to your project.</p></div>`;
+    };
   }
 
   function setMobileFrame(index) {
     const now = Date.now();
-    if (now - lastFrameUpdate < 35) return;
+    if (now - lastFrameUpdate < 24) return;
     lastFrameUpdate = now;
 
     const img = document.getElementById('anima-effect');
@@ -119,48 +107,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     currentIndex = safeIndex;
     img.src = mobileFrames[currentIndex];
-
     const center = (mobileFrames.length - 1) / 2;
     const movement = currentIndex - center;
-    img.style.transform = `translateY(${movement * 1.15}px) scale(${1 + Math.abs(movement) * 0.002})`;
+    img.style.transform = `translateY(${movement * 1.3}px) scale(${1 + Math.abs(movement) * 0.002})`;
   }
 
   function handleOrientation(event) {
-    if (!isMobile || !mobileFrames.length) return;
-
+    if (!isMobileOrTablet || !mobileFrames.length) return;
     const beta = event.beta;
     if (beta === null || typeof beta === 'undefined') return;
 
-    // On utilise uniquement l’inclinaison haut/bas du téléphone.
-    const minAngle = 20;
-    const maxAngle = 80;
-    const clamped = Math.max(minAngle, Math.min(maxAngle, beta));
-    const normalized = (clamped - minAngle) / (maxAngle - minAngle);
-    const index = Math.round(normalized * (mobileFrames.length - 1));
+    if (neutralBeta === null) neutralBeta = beta;
 
+    // Haut/bas uniquement : on compare l'inclinaison actuelle à la position de départ.
+    const delta = Math.max(-35, Math.min(35, beta - neutralBeta));
+    const normalized = (delta + 35) / 70;
+    const index = Math.round(normalized * (FRAME_COUNT - 1));
     setMobileFrame(index);
   }
 
   async function enableMotion() {
-    if (!isMobile) return;
+    if (!isMobileOrTablet) return;
 
     if (!selectedShape || !selectedColor) {
-      motionBtn.textContent = 'Choisis une forme + couleur';
-      setTimeout(() => {
-        motionBtn.textContent = motionEnabled ? 'Mouvement activé' : 'Activer le mouvement';
-      }, 1500);
+      motionBtn.textContent = 'Select shape + colour';
+      setTimeout(() => { motionBtn.textContent = motionEnabled ? 'Motion enabled' : 'Enable motion'; }, 1400);
       return;
     }
 
     try {
-      // Obligatoire sur iPhone / iPad récents.
-      if (
-        typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function'
-      ) {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         const permission = await DeviceOrientationEvent.requestPermission();
         if (permission !== 'granted') {
-          motionBtn.textContent = 'Autorisation refusée';
+          motionBtn.textContent = 'Permission denied';
           return;
         }
       }
@@ -169,11 +148,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('deviceorientation', handleOrientation, true);
         motionEnabled = true;
       }
-
-      motionBtn.textContent = 'Mouvement activé';
+      neutralBeta = null;
+      motionBtn.textContent = 'Motion enabled';
       motionBtn.disabled = true;
     } catch (error) {
-      motionBtn.textContent = 'Mouvement indisponible';
+      motionBtn.textContent = 'Motion unavailable';
     }
   }
 
@@ -182,7 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
       shapeButtons.forEach((btn) => btn.classList.remove('active'));
       button.classList.add('active');
       selectedShape = button.dataset.shape;
+      neutralBeta = null;
       showPreview();
+      if (isMobileOrTablet) document.querySelector('.preview-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
 
@@ -191,26 +172,25 @@ document.addEventListener('DOMContentLoaded', () => {
       colorOptions.forEach((color) => color.classList.remove('active'));
       option.classList.add('active');
       selectedColor = option.dataset.color;
+      neutralBeta = null;
       showPreview();
+      if (isMobileOrTablet) document.querySelector('.preview-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
 
   resetBtn.addEventListener('click', () => {
     selectedShape = null;
     selectedColor = null;
+    neutralBeta = null;
     shapeButtons.forEach((btn) => btn.classList.remove('active'));
     colorOptions.forEach((color) => color.classList.remove('active'));
     updateSelectionLabel();
     showEmpty();
-
-    if (isMobile) {
-      motionBtn.textContent = motionEnabled ? 'Mouvement activé' : 'Activer le mouvement';
-      motionBtn.disabled = motionEnabled;
-    }
+    motionBtn.textContent = motionEnabled ? 'Motion enabled' : 'Enable motion';
+    motionBtn.disabled = motionEnabled;
   });
 
   motionBtn.addEventListener('click', enableMotion);
-
   setDeviceMode();
   updateSelectionLabel();
 });

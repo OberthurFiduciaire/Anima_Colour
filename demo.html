@@ -1,121 +1,61 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Démonstration — Oberthur Fiduciaire</title>
+  <title>Interactive Demonstration — Oberthur Fiduciaire</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="demo.css" />
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a href="index.html" class="brand" aria-label="Retour à la page d'accueil">
-        <span class="brand-mark"></span>
-        <span>Oberthur Fiduciaire</span>
-      </a>
-      <nav class="main-nav" aria-label="Navigation principale">
-        <ul>
-          <li><a href="index.html">Home</a></li>
-          <li><a href="demo.html" class="active">Démonstration</a></li>
-          <li><a href="contact.html">Contact</a></li>
-        </ul>
-      </nav>
+      <a href="index.html" class="brand" aria-label="Oberthur Fiduciaire home"><span class="brand-mark"></span><span>Oberthur Fiduciaire</span></a>
+      <nav class="main-nav" aria-label="Main navigation"><ul><li><a href="index.html">Home</a></li><li><a href="demo.html" class="active">Demo</a></li><li><a href="index.html#contact">Contact</a></li></ul></nav>
     </div>
   </header>
 
   <main>
     <section class="demo-section">
-      <div class="hero-bg-grid"></div>
-      <div class="hero-orb orb-1"></div>
-      <div class="hero-orb orb-2"></div>
-      <div class="hero-orb orb-3"></div>
-
+      <div class="hero-bg-grid"></div><div class="hero-orb orb-1"></div><div class="hero-orb orb-2"></div><div class="hero-orb orb-3"></div>
       <div class="container">
         <div class="demo-intro">
           <span class="hero-eyebrow">Interactive demo</span>
-          <h1>Démonstration <em>sécurité</em></h1>
-          <p>Sélectionnez une forme et une couleur. Sur téléphone, l’image réagit à l’inclinaison haut/bas. Sur ordinateur, le rendu utilise un GIF animé automatique.</p>
+          <h1>Security <em>demonstration</em></h1>
+          <p>Select a shape and a colour. On mobile and tablet, the image reacts to up/down tilt. On desktop, an animated GIF plays automatically.</p>
         </div>
 
-        <div class="demo-warning">
-          <div class="warning-icon">!</div>
-          <div>
-            <strong>Démonstration uniquement</strong>
-            <p>Cette présentation est une simulation visuelle destinée à illustrer les possibilités de personnalisation.</p>
-          </div>
-        </div>
-
-        <section class="demo-interface" aria-label="Interface de démonstration">
-          <aside class="choice-panel shapes-panel">
-            <div class="panel-heading">
-              <span>01</span>
-              <h2>Formes disponibles</h2>
+        <section class="demo-interface" aria-label="Interactive demonstration interface">
+          <section class="preview-panel">
+            <div class="preview-topline"><span id="device-mode">Desktop mode</span><span id="selection-label">No selection</span></div>
+            <div class="preview-container">
+              <div id="animated-preview" class="animated-preview empty-state"><span class="preview-kicker">Preview</span><p>Select a shape and a colour to see the animation.</p></div>
             </div>
+            <div class="motion-help"><span class="motion-dot"></span><p>Mobile/tablet: enable motion, then tilt up and down. Desktop: automatic GIF.</p></div>
+            <div class="preview-actions"><button id="reset-btn" class="btn btn-secondary" type="button">Reset</button><button id="motion-permission-btn" class="btn btn-primary" type="button">Enable motion</button></div>
+          </section>
 
+          <aside class="choice-panel shapes-panel">
+            <div class="panel-heading"><span>01</span><h2>Available shapes</h2></div>
             <div class="shapes-grid">
-              <button class="shape-btn" type="button" data-shape="Butterfly">
-                <div class="shape-preview">
-                  <img src="formes/Butterfly_BlackWhite.gif" alt="Forme Butterfly" class="shape-gif" />
-                </div>
-                <div class="shape-info">
-                  <strong>Butterfly</strong>
-                  <span>Static image · Grow</span>
-                </div>
-              </button>
-
-              <button class="shape-btn" type="button" data-shape="Switch">
-                <div class="shape-preview">
-                  <img src="formes/Switch_BlackWhite.gif" alt="Forme Switch" class="shape-gif" />
-                </div>
-                <div class="shape-info">
-                  <strong>Switch</strong>
-                  <span>Static image · Grow</span>
-                </div>
-              </button>
+              <button class="shape-btn" type="button" data-shape="Butterfly"><div class="shape-preview"><img src="formes/Butterfly_BlackWhite.gif" alt="Butterfly shape" class="shape-gif" /></div><div class="shape-info"><strong>Butterfly</strong><span>Static image · Grow</span></div></button>
+              <button class="shape-btn" type="button" data-shape="Switch"><div class="shape-preview"><img src="formes/Switch_BlackWhite.gif" alt="Switch shape" class="shape-gif" /></div><div class="shape-info"><strong>Switch</strong><span>Static image · Grow</span></div></button>
             </div>
           </aside>
 
-          <section class="preview-panel">
-            <div class="preview-topline">
-              <span id="device-mode">Mode ordinateur</span>
-              <span id="selection-label">Aucune sélection</span>
-            </div>
-
-            <div class="preview-container">
-              <div id="animated-preview" class="animated-preview empty-state">
-                <span class="preview-kicker">Aperçu</span>
-                <p>Sélectionnez une forme et une couleur pour voir l’animation.</p>
-              </div>
-            </div>
-
-            <div class="motion-help">
-              <span class="motion-dot"></span>
-              <p>Téléphone : inclinaison haut/bas · Ordinateur : GIF animé automatique</p>
-            </div>
-
-            <div class="preview-actions">
-              <button id="reset-btn" class="btn btn-secondary" type="button">Recommencer</button>
-              <button id="motion-permission-btn" class="btn btn-primary" type="button">Activer le mouvement</button>
-            </div>
-          </section>
-
           <aside class="choice-panel colors-panel">
-            <div class="panel-heading">
-              <span>02</span>
-              <h2>Couleurs disponibles</h2>
-            </div>
-
+            <div class="panel-heading"><span>02</span><h2>Available colours</h2></div>
             <div class="colors-list">
-              <button class="color-option" type="button" data-color="Emerald"><img src="couleurs/EMERALD.png" alt="Emerald" class="color-img" /><span>Emerald</span></button>
-              <button class="color-option" type="button" data-color="Tourmaline"><img src="couleurs/TOURMALINE.png" alt="Tourmaline" class="color-img" /><span>Tourmaline</span></button>
-              <button class="color-option" type="button" data-color="Citrine"><img src="couleurs/CITRINE.png" alt="Citrine" class="color-img" /><span>Citrine</span></button>
-              <button class="color-option" type="button" data-color="Topaz"><img src="couleurs/TOPAZ.png" alt="Topaz" class="color-img" /><span>Topaz</span></button>
-              <button class="color-option" type="button" data-color="Ruby"><img src="couleurs/RUBY.png" alt="Ruby" class="color-img" /><span>Ruby</span></button>
-              <button class="color-option" type="button" data-color="Sapphire"><img src="couleurs/SAPPHIRE.png" alt="Sapphire" class="color-img" /><span>Sapphire</span></button>
               <button class="color-option" type="button" data-color="Amethyst"><img src="couleurs/AMETHYST.png" alt="Amethyst" class="color-img" /><span>Amethyst</span></button>
               <button class="color-option" type="button" data-color="Aquamarine"><img src="couleurs/AQUAMARINE.png" alt="Aquamarine" class="color-img" /><span>Aquamarine</span></button>
+              <button class="color-option" type="button" data-color="Citrine"><img src="couleurs/CITRINE.png" alt="Citrine" class="color-img" /><span>Citrine</span></button>
+              <button class="color-option" type="button" data-color="Emerald"><img src="couleurs/EMERALD.png" alt="Emerald" class="color-img" /><span>Emerald</span></button>
+              <button class="color-option" type="button" data-color="Ruby"><img src="couleurs/RUBY.png" alt="Ruby" class="color-img" /><span>Ruby</span></button>
+              <button class="color-option" type="button" data-color="Sapphire"><img src="couleurs/SAPPHIRE.png" alt="Sapphire" class="color-img" /><span>Sapphire</span></button>
+              <button class="color-option" type="button" data-color="Topaz"><img src="couleurs/TOPAZ.png" alt="Topaz" class="color-img" /><span>Topaz</span></button>
+              <button class="color-option" type="button" data-color="Tourmaline"><img src="couleurs/TOURMALINE.png" alt="Tourmaline" class="color-img" /><span>Tourmaline</span></button>
             </div>
           </aside>
         </section>
